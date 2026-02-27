@@ -36,11 +36,11 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **CONT-02**: Sophia can match each client's authentic voice from approved content history and voice profile (FR17)
 - [x] **CONT-03**: Sophia can generate 2-5 content options per client for operator selection (FR18)
 - [x] **CONT-04**: Sophia can detect voice drift before content reaches approval queue (FR19)
-- [ ] **CONT-05**: Operator can regenerate content with specific guidance (FR20)
-- [ ] **CONT-06**: Sophia can adapt content format based on performance data (FR21)
+- [x] **CONT-05**: Operator can regenerate content with specific guidance (FR20)
+- [x] **CONT-06**: Sophia can adapt content format based on performance data (FR21)
 - [x] **CONT-07**: Sophia can apply pre-publish quality gates: research grounding, sensitivity, voice alignment, plagiarism, AI pattern detection (FR22)
-- [ ] **CONT-08**: Sophia can tag content with AI-assisted labeling when mandated by platforms (FR23)
-- [ ] **CONT-09**: Operator can initiate interactive voice calibration sessions through web interface (FR64)
+- [x] **CONT-08**: Sophia can tag content with AI-assisted labeling when mandated by platforms (FR23)
+- [x] **CONT-09**: Operator can initiate interactive voice calibration sessions through web interface (FR64)
 
 ### Approval & Publishing
 
@@ -158,11 +158,11 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | CONT-02 | Phase 3 | Complete |
 | CONT-03 | Phase 3 | Complete |
 | CONT-04 | Phase 3 | Complete |
-| CONT-05 | Phase 3 | Pending |
-| CONT-06 | Phase 3 | Pending |
+| CONT-05 | Phase 3 | Complete |
+| CONT-06 | Phase 3 | Complete |
 | CONT-07 | Phase 3 | Complete |
-| CONT-08 | Phase 3 | Pending |
-| CONT-09 | Phase 3 | Pending |
+| CONT-08 | Phase 3 | Complete |
+| CONT-09 | Phase 3 | Complete |
 | SAFE-05 | Phase 3 | Complete |
 | SAFE-06 | Phase 3 | Complete |
 | APPR-01 | Phase 4 | Pending |
