@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-02-27T17:30:11Z"
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-02-27T20:30:25Z"
 progress:
   total_phases: 6
   completed_phases: 3
-  total_plans: 14
-  completed_plans: 11
+  total_plans: 16
+  completed_plans: 12
 ---
 
 # Project State: Sophia
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 ## Current Phase
 
 **Phase 4: Approval & Publishing Workflow**
-- Status: Not Started
-- Current Plan: 0/3
-- Plans: 0/3 complete
+- Status: In Progress
+- Current Plan: 2/5
+- Plans: 1/5 complete
 
 ## Milestone Progress
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
-| 4 | ○ | 0/3 | 0% |
+| 4 | ◐ | 1/5 | 20% |
 | 5 | ○ | 0/3 | 0% |
-| 6 | ○ | 0/3 | 0% |
+| 6 | ○ | 0/2 | 0% |
 
-Progress: ████████░░ 79%
+Progress: ████████░░ 75%
 
 ## Decision Log
 
@@ -93,6 +93,12 @@ Progress: ████████░░ 79%
 | 2026-02-27 | Content router placeholder DB dependency | Phase 03-03: same pattern as research router for testability |
 | 2026-02-27 | Photorealistic detection via image_prompt keyword matching | Phase 03-04: no separate flag needed, checks for "photorealistic" in prompt |
 | 2026-02-27 | AI label at Step 8b between gate filtering and ranking | Phase 03-04: avoids labeling rejected drafts, labels set before persistence |
+| 2026-02-27 | Sync service layer with async router pattern for SSE | Phase 04-01: service functions stay synchronous (Phase 1-3 pattern), router handles async event publishing |
+| 2026-02-27 | State machine as VALID_TRANSITIONS dict | Phase 04-01: simple, testable, no library dependency for approval state transitions |
+| 2026-02-27 | SSE endpoint on separate events_router | Phase 04-01: ensures clean /api/events URL without approval prefix |
+| 2026-02-27 | Event bus drops events for slow consumers (QueueFull) | Phase 04-01: non-blocking publisher, bounded memory per subscriber |
+| 2026-02-27 | GlobalPublishState as separate table | Phase 04-01: operator can pause all publishing globally |
+| 2026-02-27 | Recovery endpoint creates RecoveryLog audit trail | Phase 04-01: full traceability for content recovery actions |
 
 ## Performance Metrics
 
@@ -109,12 +115,13 @@ Progress: ████████░░ 79%
 | 03-02 | 13min | 2 | 3 |
 | 03-03 | 14min | 2 | 7 |
 | 03-04 | 6min | 1 | 2 |
+| 04-01 | 8min | 2 | 15 |
 
 ## Last Session
 
-**Stopped at:** Completed 03-04-PLAN.md
-**Resume with:** Phase 4 plan 1 (approval workflow)
-**Resume file:** .planning/phases/04-*/04-01-PLAN.md
+**Stopped at:** Completed 04-01-PLAN.md
+**Resume with:** Phase 4 plan 2
+**Resume file:** .planning/phases/04-*/04-02-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 03-04-PLAN.md execution*
+*Last updated: 2026-02-27 after 04-01-PLAN.md execution*

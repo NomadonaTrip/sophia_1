@@ -44,12 +44,12 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Approval & Publishing
 
-- [ ] **APPR-01**: Operator can review, approve, edit, or reject content through CLI (Sprint 0), web app, or Telegram (Sprint 1) (FR24)
-- [ ] **APPR-02**: Operator can approve content for automated publishing or manual copy-paste posting (FR25)
+- [x] **APPR-01**: Operator can review, approve, edit, or reject content through CLI (Sprint 0), web app, or Telegram (Sprint 1) (FR24)
+- [x] **APPR-02**: Operator can approve content for automated publishing or manual copy-paste posting (FR25)
 - [ ] **APPR-03**: Sophia can publish approved content to Facebook and Instagram via MCP (FR26)
 - [ ] **APPR-04**: Sophia can schedule posts respecting cadence, timing, and rate limits (FR27)
-- [ ] **APPR-05**: Approval state is consistent across all interfaces in real time (FR28)
-- [ ] **APPR-06**: Sophia never publishes content without explicit human approval (FR29)
+- [x] **APPR-05**: Approval state is consistent across all interfaces in real time (FR28)
+- [x] **APPR-06**: Sophia never publishes content without explicit human approval (FR29)
 - [ ] **APPR-07**: Operator can use browser-based voice input via Web Speech API (FR65)
 
 ### Performance & Analytics
@@ -165,12 +165,12 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | CONT-09 | Phase 3 | Complete |
 | SAFE-05 | Phase 3 | Complete |
 | SAFE-06 | Phase 3 | Complete |
-| APPR-01 | Phase 4 | Pending |
-| APPR-02 | Phase 4 | Pending |
+| APPR-01 | Phase 4 | Complete |
+| APPR-02 | Phase 4 | Complete |
 | APPR-03 | Phase 4 | Pending |
 | APPR-04 | Phase 4 | Pending |
-| APPR-05 | Phase 4 | Pending |
-| APPR-06 | Phase 4 | Pending |
+| APPR-05 | Phase 4 | Complete |
+| APPR-06 | Phase 4 | Complete |
 | APPR-07 | Phase 4 | Pending |
 | SAFE-03 | Phase 4 | Pending |
 | SAFE-04 | Phase 4 | Pending |
