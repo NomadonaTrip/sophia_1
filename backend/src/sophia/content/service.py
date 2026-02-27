@@ -37,6 +37,7 @@ from sophia.content.prompt_builder import (
     build_batch_prompts,
     build_image_prompt,
 )
+from sophia.content.ai_label import apply_ai_label, should_apply_ai_label
 from sophia.content.quality_gates import run_pipeline as run_quality_gates
 from sophia.content.voice_alignment import (
     compute_voice_baseline,
@@ -199,6 +200,15 @@ def generate_content_batch(
             suggestion="Check systemic gate issues with check_systemic_gate_issues(). "
             "The most common failure gates may need recalibration.",
         )
+
+    # Step 8b: Apply AI-assisted labeling where mandated (CONT-08)
+    for draft in active_drafts:
+        has_ai_image = bool(
+            draft.image_prompt
+            and "photorealistic" in (draft.image_prompt or "").lower()
+        )
+        if should_apply_ai_label(draft.platform, draft.content_type, has_ai_image=has_ai_image):
+            apply_ai_label(draft)
 
     # Step 9: Rank active (non-rejected) drafts
     active_drafts = _rank_drafts(active_drafts, intelligence)
@@ -708,6 +718,15 @@ def regenerate_draft(
     if report.status == "rejected":
         draft.copy = original_copy
         draft.gate_status = "rejected"
+
+    # Apply AI-assisted labeling on regenerated draft (CONT-08)
+    if report.status != "rejected":
+        has_ai_image = bool(
+            draft.image_prompt
+            and "photorealistic" in (draft.image_prompt or "").lower()
+        )
+        if should_apply_ai_label(draft.platform, draft.content_type, has_ai_image=has_ai_image):
+            apply_ai_label(draft)
 
     # Increment regeneration_count
     draft.regeneration_count += 1
