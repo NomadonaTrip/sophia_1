@@ -38,7 +38,7 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **CONT-04**: Sophia can detect voice drift before content reaches approval queue (FR19)
 - [ ] **CONT-05**: Operator can regenerate content with specific guidance (FR20)
 - [ ] **CONT-06**: Sophia can adapt content format based on performance data (FR21)
-- [ ] **CONT-07**: Sophia can apply pre-publish quality gates: research grounding, sensitivity, voice alignment, plagiarism, AI pattern detection (FR22)
+- [x] **CONT-07**: Sophia can apply pre-publish quality gates: research grounding, sensitivity, voice alignment, plagiarism, AI pattern detection (FR22)
 - [ ] **CONT-08**: Sophia can tag content with AI-assisted labeling when mandated by platforms (FR23)
 - [ ] **CONT-09**: Operator can initiate interactive voice calibration sessions through web interface (FR64)
 
@@ -95,8 +95,8 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **SAFE-02**: Sophia can encrypt all client data at rest (FR50)
 - [ ] **SAFE-03**: Sophia can execute content recovery protocol for published content issues (FR51)
 - [ ] **SAFE-04**: Operator can trigger content recovery for any published post (FR52)
-- [ ] **SAFE-05**: Sophia can filter content for sensitivity (FR53)
-- [ ] **SAFE-06**: Sophia can check generated content for originality (FR54)
+- [x] **SAFE-05**: Sophia can filter content for sensitivity (FR53)
+- [x] **SAFE-06**: Sophia can check generated content for originality (FR54)
 
 ### Client Communication
 
@@ -160,11 +160,11 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | CONT-04 | Phase 3 | Complete |
 | CONT-05 | Phase 3 | Pending |
 | CONT-06 | Phase 3 | Pending |
-| CONT-07 | Phase 3 | Pending |
+| CONT-07 | Phase 3 | Complete |
 | CONT-08 | Phase 3 | Pending |
 | CONT-09 | Phase 3 | Pending |
-| SAFE-05 | Phase 3 | Pending |
-| SAFE-06 | Phase 3 | Pending |
+| SAFE-05 | Phase 3 | Complete |
+| SAFE-06 | Phase 3 | Complete |
 | APPR-01 | Phase 4 | Pending |
 | APPR-02 | Phase 4 | Pending |
 | APPR-03 | Phase 4 | Pending |

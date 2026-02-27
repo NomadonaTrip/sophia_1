@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-02-27T16:11:19Z"
+stopped_at: Completed 03-02-PLAN.md
+last_updated: "2026-02-27T16:28:27Z"
 progress:
   total_phases: 6
   completed_phases: 2
   total_plans: 13
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 3: Content Generation & Quality Gates**
 - Status: In Progress
-- Current Plan: 1/3
-- Plans: 1/3 complete
+- Current Plan: 2/3
+- Plans: 2/3 complete
 
 ## Milestone Progress
 
@@ -34,12 +34,12 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 |-------|--------|-------|----------|
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
-| 3 | ◐ | 1/3 | 33% |
+| 3 | ◐ | 2/3 | 67% |
 | 4 | ○ | 0/3 | 0% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/3 | 0% |
 
-Progress: ██████░░░░ 62%
+Progress: ███████░░░ 69%
 
 ## Decision Log
 
@@ -79,6 +79,11 @@ Progress: ██████░░░░ 62%
 | 2026-02-27 | Prompt split into (system_prompt, examples_text) tuple | Phase 03-01: allows independent token budget management for instructions vs few-shot |
 | 2026-02-27 | Story option count halved from feed count | Phase 03-01: ephemeral content gets less operator attention |
 | 2026-02-27 | ContentGenerationError with reason field | Phase 03-01: enables informative three-input validation failure messages |
+| 2026-02-27 | Gate dispatch table pattern (_GATE_FUNCTIONS dict) | Phase 03-02: maps gate names to callables for testability and extensibility |
+| 2026-02-27 | Auto-fix returns None for voice alignment | Phase 03-02: too hard to fix deterministically, requires LLM in production |
+| 2026-02-27 | 17 AI cliche regex patterns + CV < 0.3 uniformity | Phase 03-02: comprehensive cliche detection with sentence structure analysis |
+| 2026-02-27 | Gate stats from gate_report JSON, not separate table | Phase 03-02: simpler schema, data already exists on ContentDraft |
+| 2026-02-27 | Rejected drafts persisted for learning | Phase 03-02: excluded from approval queue but kept in DB for pattern analysis |
 
 ## Performance Metrics
 
@@ -92,12 +97,13 @@ Progress: ██████░░░░ 62%
 | 02-03 | 11min | 2 | 5 |
 | 02-04 | 4min | 1 | 4 |
 | 03-01 | 11min | 2 | 11 |
+| 03-02 | 13min | 2 | 3 |
 
 ## Last Session
 
-**Stopped at:** Completed 03-01-PLAN.md
-**Resume with:** Phase 3 plan 2 (quality gates)
-**Resume file:** .planning/phases/03-*/03-02-PLAN.md
+**Stopped at:** Completed 03-02-PLAN.md
+**Resume with:** Phase 3 plan 3 (regeneration)
+**Resume file:** .planning/phases/03-*/03-03-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 03-01-PLAN.md execution*
+*Last updated: 2026-02-27 after 03-02-PLAN.md execution*
