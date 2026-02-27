@@ -2,7 +2,11 @@
 
 All model tests run against a SQLCipher-encrypted test database.
 Voice alignment tests use local spaCy + textstat (no external API mocking needed).
+Prompt builder and service tests mock upstream services.
 """
+
+from datetime import datetime, timedelta, timezone
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -12,12 +16,24 @@ from sophia.content.models import (
     FormatPerformance,
     RegenerationLog,
 )
+from sophia.content.prompt_builder import (
+    PLATFORM_RULES,
+    build_batch_prompts,
+    build_generation_prompt,
+    build_image_prompt,
+)
+from sophia.content.service import (
+    _compute_option_count,
+    generate_content_batch,
+    get_content_drafts,
+)
 from sophia.content.voice_alignment import (
     compute_voice_baseline,
     compute_voice_confidence,
     extract_stylometric_features,
     score_voice_alignment,
 )
+from sophia.exceptions import ContentGenerationError
 
 
 # =============================================================================
@@ -343,3 +359,524 @@ class TestComputeVoiceConfidence:
         assert compute_voice_confidence(16) == "high"
         assert compute_voice_confidence(20) == "high"
         assert compute_voice_confidence(100) == "high"
+
+
+# =============================================================================
+# Prompt Builder Tests
+# =============================================================================
+
+
+class TestBuildGenerationPrompt:
+    """Tests for system prompt construction."""
+
+    @pytest.fixture
+    def mock_voice_profile(self):
+        return {
+            "base_voice": {
+                "tone": {"value": "warm and friendly", "confidence": 0.8, "source": "claude_analysis"},
+                "formality": {"value": "casual", "confidence": 0.7, "source": "claude_analysis"},
+                "humor_style": {"value": "light, occasional puns", "confidence": 0.6, "source": "claude_analysis"},
+                "vocabulary_complexity": {"value": "simple", "confidence": 0.7, "source": "claude_analysis"},
+                "emoji_usage": {"value": "moderate", "confidence": 0.5, "source": "claude_analysis"},
+                "hashtag_style": {"value": "relevant", "confidence": 0.5, "source": "claude_analysis"},
+                "cta_patterns": {"value": "visit us", "confidence": 0.4, "source": "claude_analysis"},
+                "storytelling": {"value": "personal anecdotes", "confidence": 0.5, "source": "claude_analysis"},
+            },
+            "platform_variants": {
+                "facebook": {"formality_delta": -0.1, "emoji_delta": 0.1},
+                "instagram": {"formality_delta": -0.2, "hashtag_delta": 0.3},
+            },
+        }
+
+    @pytest.fixture
+    def mock_research(self):
+        return [
+            {"topic": "Spring gardening trends", "summary": "Container gardening up 40%", "content_angles": ["DIY tips"]},
+            {"topic": "Local farmers market", "summary": "New vendors this season", "content_angles": ["Event coverage"]},
+        ]
+
+    @pytest.fixture
+    def mock_intelligence(self):
+        return {
+            "name": "Green Thumb Garden Center",
+            "business_description": "Local garden center specializing in native plants",
+            "industry": "Retail - Garden Center",
+            "target_audience": {"primary": "homeowners 30-55"},
+            "geography_area": "Hamilton, Ontario",
+        }
+
+    @pytest.fixture
+    def mock_client_config(self):
+        return {
+            "guardrails": {"blocklist": ["competitor-name"], "sensitive_topics": ["politics"]},
+            "content_pillars": ["seasonal tips", "plant care", "local events"],
+            "brand_assets": {"visual_style": {"color_palette": "greens and earth tones"}},
+        }
+
+    def test_prompt_contains_platform_rules(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """System prompt should contain platform-specific rules."""
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=[],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "2200" in system_prompt  # max_chars for Instagram feed
+        assert "3-5" in system_prompt  # hashtag guidance
+        assert "instagram" in system_prompt.lower()
+
+    def test_prompt_contains_voice_instructions(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """System prompt should include voice style instructions."""
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=[],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "warm and friendly" in system_prompt
+        assert "casual" in system_prompt
+
+    def test_prompt_contains_research_context(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """System prompt should include research findings as context."""
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=["Example post 1", "Example post 2"],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "Spring gardening trends" in system_prompt
+        assert "Container gardening" in system_prompt
+
+    def test_prompt_contains_ai_cliche_avoidance(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """System prompt should include AI cliche avoidance rules."""
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=[],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "cliche" in system_prompt.lower() or "game-changer" in system_prompt
+
+    def test_instagram_story_casual_shift(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """Instagram story prompt should apply casual shift and 120 char max."""
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=[],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="story",
+            client_config=mock_client_config,
+        )
+        assert "120" in system_prompt  # max_chars for stories
+        assert "story mode" in system_prompt.lower() or "punchy" in system_prompt.lower()
+
+    def test_emoji_preference_respected_no_emojis(
+        self, mock_research, mock_intelligence, mock_client_config
+    ):
+        """Voice profile with uses_emojis=False should produce 'No emojis' in prompt."""
+        no_emoji_profile = {
+            "base_voice": {
+                "emoji_usage": {"value": "none", "confidence": 0.9, "source": "claude_analysis"},
+            },
+            "platform_variants": {},
+        }
+        system_prompt, _ = build_generation_prompt(
+            voice_profile=no_emoji_profile,
+            approved_examples=[],
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "no emoji" in system_prompt.lower()
+
+    def test_few_shot_examples_formatted(
+        self, mock_voice_profile, mock_research, mock_intelligence, mock_client_config
+    ):
+        """Approved examples should appear as numbered few-shot examples."""
+        examples = [
+            "Check out our new spring collection!",
+            "Weekend market starts Saturday at 9am.",
+        ]
+        _, examples_text = build_generation_prompt(
+            voice_profile=mock_voice_profile,
+            approved_examples=examples,
+            research_findings=mock_research,
+            intelligence=mock_intelligence,
+            platform="instagram",
+            content_type="feed",
+            client_config=mock_client_config,
+        )
+        assert "Example 1" in examples_text
+        assert "Example 2" in examples_text
+        assert "spring collection" in examples_text
+
+
+class TestBuildBatchPrompts:
+    """Tests for batch prompt generation across platforms."""
+
+    def test_batch_prompts_both_platforms_with_stories(self):
+        """Batch prompts should include feed for both platforms + Instagram story."""
+        prompts = build_batch_prompts(
+            research=[{"topic": "Test", "summary": "Test finding"}],
+            intelligence={"name": "Test Biz", "industry": "Retail"},
+            voice={"base_voice": {}, "platform_variants": {}},
+            platforms=["facebook", "instagram"],
+            option_count=3,
+            include_stories=True,
+            client_config={},
+            approved_examples=[],
+        )
+        # Should have: facebook feed + instagram feed + instagram story = 3 prompts
+        assert len(prompts) == 3
+        platforms_types = [(p["platform"], p["content_type"]) for p in prompts]
+        assert ("facebook", "feed") in platforms_types
+        assert ("instagram", "feed") in platforms_types
+        assert ("instagram", "story") in platforms_types
+
+    def test_batch_prompts_option_count_passed(self):
+        """Each prompt should carry the option_count."""
+        prompts = build_batch_prompts(
+            research=[],
+            intelligence={"name": "Test"},
+            voice={"base_voice": {}, "platform_variants": {}},
+            platforms=["instagram"],
+            option_count=4,
+            include_stories=False,
+            client_config={},
+            approved_examples=[],
+        )
+        assert len(prompts) == 1
+        assert prompts[0]["option_count"] == 4
+
+
+class TestBuildImagePrompt:
+    """Tests for image prompt construction."""
+
+    def test_image_prompt_correct_ratio_instagram_feed(self):
+        """Instagram feed image prompt should specify 1:1 aspect ratio."""
+        prompt = build_image_prompt(
+            business_name="Green Thumb",
+            visual_style={"color_palette": "greens and earth tones", "photography_style": "natural"},
+            platform="instagram",
+            content_type="feed",
+            post_copy="Spring flowers are here!",
+        )
+        assert "1:1" in prompt
+        assert "Green Thumb" in prompt
+        assert "text" in prompt.lower()  # no text instruction
+
+    def test_image_prompt_correct_ratio_instagram_story(self):
+        """Instagram story image prompt should specify 9:16 aspect ratio."""
+        prompt = build_image_prompt(
+            business_name="Test Biz",
+            visual_style={},
+            platform="instagram",
+            content_type="story",
+            post_copy="Spring sale!",
+        )
+        assert "9:16" in prompt
+
+    def test_image_prompt_correct_ratio_facebook_feed(self):
+        """Facebook feed image prompt should specify 1.91:1 aspect ratio."""
+        prompt = build_image_prompt(
+            business_name="Test Biz",
+            visual_style={},
+            platform="facebook",
+            content_type="feed",
+            post_copy="Check us out!",
+        )
+        assert "1.91:1" in prompt
+
+    def test_image_prompt_includes_visual_style(self):
+        """Image prompt should include visual style details."""
+        prompt = build_image_prompt(
+            business_name="Test Biz",
+            visual_style={
+                "color_palette": "earth tones",
+                "photography_style": "lifestyle photography",
+                "composition": "rule of thirds",
+            },
+            platform="instagram",
+            content_type="feed",
+            post_copy="Test post.",
+        )
+        assert "earth tones" in prompt
+        assert "lifestyle photography" in prompt
+        assert "rule of thirds" in prompt
+
+
+# =============================================================================
+# Service Tests (mock upstream services)
+# =============================================================================
+
+
+class TestComputeOptionCount:
+    """Tests for adaptive option count based on research richness."""
+
+    def test_thin_research_2_options(self):
+        """1-2 findings should produce 2 options."""
+        findings = [MagicMock(finding_type=MagicMock(value="news"), is_time_sensitive=0)]
+        assert _compute_option_count(findings) == 2
+
+        findings2 = [
+            MagicMock(finding_type=MagicMock(value="news"), is_time_sensitive=0),
+            MagicMock(finding_type=MagicMock(value="news"), is_time_sensitive=0),
+        ]
+        assert _compute_option_count(findings2) == 2
+
+    def test_average_research_3_options(self):
+        """3-7 findings should produce 3 options (base)."""
+        findings = [
+            MagicMock(finding_type=MagicMock(value="news"), is_time_sensitive=0)
+            for _ in range(5)
+        ]
+        assert _compute_option_count(findings) == 3
+
+    def test_rich_research_4_5_options(self):
+        """10+ findings with diverse sources should produce 4-5 options."""
+        findings = []
+        types = ["news", "trend", "community", "industry"]
+        for i in range(12):
+            findings.append(
+                MagicMock(
+                    finding_type=MagicMock(value=types[i % len(types)]),
+                    is_time_sensitive=1 if i < 3 else 0,
+                )
+            )
+        result = _compute_option_count(findings)
+        assert result >= 4, f"Expected 4-5 options for rich research, got {result}"
+        assert result <= 5
+
+    def test_empty_research_2_options(self):
+        """Empty research should produce 2 options (minimum)."""
+        assert _compute_option_count([]) == 2
+
+
+class TestGenerateContentBatch:
+    """Tests for the generation orchestrator with mocked upstream services."""
+
+    def _create_mock_finding(self, db_session, client):
+        """Create a real ResearchFinding in the test DB."""
+        from sophia.research.models import FindingType, ResearchFinding
+
+        now = datetime.now(timezone.utc)
+        finding = ResearchFinding(
+            client_id=client.id,
+            finding_type=FindingType.NEWS,
+            topic="Spring gardening trends",
+            summary="Container gardening up 40%",
+            content_angles=["DIY tips"],
+            source_name="local_news",
+            confidence=0.8,
+            is_time_sensitive=0,
+            expires_at=now + timedelta(days=3),
+        )
+        db_session.add(finding)
+        db_session.flush()
+        return finding
+
+    def _setup_client_for_generation(self, db_session, client):
+        """Setup a client with all three required inputs."""
+        from sophia.intelligence.models import VoiceProfile
+
+        # Add business description and content pillars
+        client.business_description = "Local garden center specializing in native plants"
+        client.content_pillars = ["seasonal tips", "plant care", "local events"]
+        db_session.flush()
+
+        # Create voice profile
+        voice = VoiceProfile(
+            client_id=client.id,
+            profile_data={
+                "base_voice": {
+                    "tone": {"value": "warm", "confidence": 0.8, "source": "test"},
+                },
+                "platform_variants": {},
+            },
+            overall_confidence_pct=60,
+            sample_count=3,
+        )
+        db_session.add(voice)
+        db_session.flush()
+
+        # Create research finding
+        self._create_mock_finding(db_session, client)
+        db_session.commit()
+
+    def test_generate_batch_all_inputs_present(self, db_session, sample_client):
+        """With all three inputs present, generate_content_batch returns drafts."""
+        self._setup_client_for_generation(db_session, sample_client)
+        drafts = generate_content_batch(db_session, sample_client.id)
+
+        assert len(drafts) > 0
+        for draft in drafts:
+            assert draft.id is not None
+            assert draft.client_id == sample_client.id
+            assert draft.platform in ("facebook", "instagram")
+            assert draft.content_type in ("feed", "story")
+            assert draft.rank is not None
+            assert draft.voice_confidence_pct is not None
+
+    def test_generate_batch_missing_research(self, db_session, sample_client):
+        """Missing research should raise ContentGenerationError."""
+        from sophia.intelligence.models import VoiceProfile
+
+        # Setup intelligence and voice but no research
+        sample_client.business_description = "Test business"
+        sample_client.content_pillars = ["topic1"]
+        db_session.flush()
+
+        voice = VoiceProfile(
+            client_id=sample_client.id,
+            profile_data={"base_voice": {}, "platform_variants": {}},
+            overall_confidence_pct=50,
+            sample_count=1,
+        )
+        db_session.add(voice)
+        db_session.commit()
+
+        with pytest.raises(ContentGenerationError) as exc_info:
+            generate_content_batch(db_session, sample_client.id)
+        assert "research" in str(exc_info.value).lower()
+
+    def test_generate_batch_missing_voice_profile(self, db_session, sample_client):
+        """Missing voice profile should raise ContentGenerationError."""
+        # Setup intelligence and research but no voice
+        sample_client.business_description = "Test business"
+        sample_client.content_pillars = ["topic1"]
+        db_session.flush()
+        self._create_mock_finding(db_session, sample_client)
+        db_session.commit()
+
+        with pytest.raises(ContentGenerationError) as exc_info:
+            generate_content_batch(db_session, sample_client.id)
+        assert "voice" in str(exc_info.value).lower()
+
+    def test_generate_batch_missing_intelligence(self, db_session, sample_client):
+        """Missing intelligence profile should raise ContentGenerationError."""
+        from sophia.intelligence.models import VoiceProfile
+
+        # Setup voice and research but no intelligence (no description, no pillars)
+        voice = VoiceProfile(
+            client_id=sample_client.id,
+            profile_data={"base_voice": {}, "platform_variants": {}},
+            overall_confidence_pct=50,
+            sample_count=1,
+        )
+        db_session.add(voice)
+        self._create_mock_finding(db_session, sample_client)
+        db_session.commit()
+
+        with pytest.raises(ContentGenerationError) as exc_info:
+            generate_content_batch(db_session, sample_client.id)
+        assert "intelligence" in str(exc_info.value).lower() or "incomplete" in str(exc_info.value).lower()
+
+
+class TestGetContentDrafts:
+    """Tests for querying content drafts with filters."""
+
+    def test_get_drafts_with_status_filter(self, db_session, sample_client):
+        """Filter drafts by status."""
+        # Create drafts with different statuses
+        for status in ["draft", "draft", "approved", "rejected"]:
+            d = ContentDraft(
+                client_id=sample_client.id,
+                platform="instagram",
+                content_type="feed",
+                copy=f"Content with status {status}",
+                image_prompt="Test prompt",
+                image_ratio="1:1",
+                status=status,
+            )
+            db_session.add(d)
+        db_session.flush()
+
+        drafts = get_content_drafts(db_session, sample_client.id, status="draft")
+        assert len(drafts) == 2
+        assert all(d.status == "draft" for d in drafts)
+
+        approved = get_content_drafts(db_session, sample_client.id, status="approved")
+        assert len(approved) == 1
+
+    def test_get_drafts_respects_limit(self, db_session, sample_client):
+        """Limit parameter should cap results."""
+        for i in range(5):
+            d = ContentDraft(
+                client_id=sample_client.id,
+                platform="instagram",
+                content_type="feed",
+                copy=f"Draft {i}",
+                image_prompt="Test",
+                image_ratio="1:1",
+            )
+            db_session.add(d)
+        db_session.flush()
+
+        drafts = get_content_drafts(db_session, sample_client.id, limit=3)
+        assert len(drafts) == 3
+
+
+class TestVoiceAlignmentIntegration:
+    """Tests for voice alignment integration in the generation pipeline."""
+
+    def test_voice_confidence_set_on_drafts(self, db_session, sample_client):
+        """Verify voice_confidence_pct is set on each generated draft."""
+        from sophia.intelligence.models import VoiceProfile
+        from sophia.research.models import FindingType, ResearchFinding
+
+        # Full setup
+        sample_client.business_description = "Garden center"
+        sample_client.content_pillars = ["plants"]
+        db_session.flush()
+
+        voice = VoiceProfile(
+            client_id=sample_client.id,
+            profile_data={"base_voice": {"tone": {"value": "warm", "confidence": 0.8, "source": "test"}}, "platform_variants": {}},
+            overall_confidence_pct=60,
+            sample_count=3,
+        )
+        db_session.add(voice)
+
+        now = datetime.now(timezone.utc)
+        finding = ResearchFinding(
+            client_id=sample_client.id,
+            finding_type=FindingType.NEWS,
+            topic="Test topic",
+            summary="Test summary",
+            source_name="test",
+            confidence=0.8,
+            is_time_sensitive=0,
+            expires_at=now + timedelta(days=3),
+        )
+        db_session.add(finding)
+        db_session.commit()
+
+        drafts = generate_content_batch(db_session, sample_client.id)
+        for draft in drafts:
+            assert draft.voice_confidence_pct is not None
+            assert draft.voice_confidence_pct >= 0

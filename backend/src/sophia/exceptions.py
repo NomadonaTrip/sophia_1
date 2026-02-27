@@ -98,3 +98,21 @@ class BackupError(SophiaError):
         suggestion: str | None = "Check backup directory permissions and disk space",
     ) -> None:
         super().__init__(message, detail, suggestion)
+
+
+class ContentGenerationError(SophiaError):
+    """Raised when content generation fails.
+
+    Typically from three-input validation (missing research, intelligence,
+    or voice profile) or other generation pipeline failures.
+    """
+
+    def __init__(
+        self,
+        message: str = "Content generation failed",
+        detail: str | None = None,
+        reason: str | None = None,
+        suggestion: str | None = "Ensure research, intelligence profile, and voice profile exist for the client",
+    ) -> None:
+        self.reason = reason
+        super().__init__(message, detail, suggestion)
