@@ -65,12 +65,13 @@ Plans:
   3. Operator can regenerate content with specific guidance and Sophia adapts format based on performance data
   4. All content passes pre-publish quality gates (research grounding, sensitivity filtering, voice alignment, plagiarism/originality, AI pattern detection) before entering the approval queue
   5. Content is tagged with AI-assisted labeling when mandated by platforms
-**Plans**: 3 plans across 3 waves
+**Plans**: 4 plans across 3 waves
 
 Plans:
 - [ ] 03-01: Content Generation Core & Voice Alignment (Wave 1) [CONT-01, CONT-02, CONT-03, CONT-04]
 - [ ] 03-02: Quality Gate Pipeline (Wave 2, depends on 03-01) [CONT-07, SAFE-05, SAFE-06]
 - [ ] 03-03: Regeneration, Calibration & Format Adaptation (Wave 3, depends on 03-01, 03-02) [CONT-05, CONT-06, CONT-08, CONT-09]
+- [ ] 03-04: Gap Closure - Wire AI Label into Content Pipeline (Wave 1, gap closure) [CONT-08]
 
 ### Phase 4: Approval, Publishing & Recovery
 **Goal**: Operator can review and approve content through multiple interfaces, and approved content publishes automatically to Facebook and Instagram
@@ -132,7 +133,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 |-------|----------------|--------|-----------|
 | 1. Client Foundation & Data Security | 0/3 | Not started | - |
 | 2. Research & Semantic Intelligence | 0/3 | Not started | - |
-| 3. Content Generation & Quality Gates | 0/3 | Not started | - |
+| 3. Content Generation & Quality Gates | 0/4 | Not started | - |
 | 4. Approval, Publishing & Recovery | 0/3 | Not started | - |
 | 5. Performance Analytics & Evaluation | 0/3 | Not started | - |
 | 6. Learning, Evolution & Client Communication | 0/3 | Not started | - |
