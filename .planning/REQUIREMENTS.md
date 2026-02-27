@@ -32,10 +32,10 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Content Generation & Voice
 
-- [ ] **CONT-01**: Sophia can generate platform-appropriate content drafts grounded in research + intelligence + voice profile (FR16)
-- [ ] **CONT-02**: Sophia can match each client's authentic voice from approved content history and voice profile (FR17)
-- [ ] **CONT-03**: Sophia can generate 2-5 content options per client for operator selection (FR18)
-- [ ] **CONT-04**: Sophia can detect voice drift before content reaches approval queue (FR19)
+- [x] **CONT-01**: Sophia can generate platform-appropriate content drafts grounded in research + intelligence + voice profile (FR16)
+- [x] **CONT-02**: Sophia can match each client's authentic voice from approved content history and voice profile (FR17)
+- [x] **CONT-03**: Sophia can generate 2-5 content options per client for operator selection (FR18)
+- [x] **CONT-04**: Sophia can detect voice drift before content reaches approval queue (FR19)
 - [ ] **CONT-05**: Operator can regenerate content with specific guidance (FR20)
 - [ ] **CONT-06**: Sophia can adapt content format based on performance data (FR21)
 - [ ] **CONT-07**: Sophia can apply pre-publish quality gates: research grounding, sensitivity, voice alignment, plagiarism, AI pattern detection (FR22)
@@ -154,10 +154,10 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | RSRCH-07 | Phase 2 | Complete |
 | RSRCH-08 | Phase 2 | Complete |
 | RSRCH-09 | Phase 2 | Complete |
-| CONT-01 | Phase 3 | Pending |
-| CONT-02 | Phase 3 | Pending |
-| CONT-03 | Phase 3 | Pending |
-| CONT-04 | Phase 3 | Pending |
+| CONT-01 | Phase 3 | Complete |
+| CONT-02 | Phase 3 | Complete |
+| CONT-03 | Phase 3 | Complete |
+| CONT-04 | Phase 3 | Complete |
 | CONT-05 | Phase 3 | Pending |
 | CONT-06 | Phase 3 | Pending |
 | CONT-07 | Phase 3 | Pending |
