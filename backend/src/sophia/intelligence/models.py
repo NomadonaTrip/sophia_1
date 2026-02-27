@@ -1,15 +1,19 @@
-"""Client, VoiceProfile, VoiceMaterial, EnrichmentLog, AuditLog ORM models.
+"""Client, VoiceProfile, VoiceMaterial, EnrichmentLog, AuditLog,
+IntelligenceEntry, InstitutionalKnowledge ORM models.
 
 All models inherit from Base and TimestampMixin. No cross-client ORM relationships
 exist -- data isolation is enforced at the service layer by always filtering on client_id.
 """
 
 from datetime import datetime
+from enum import Enum as PyEnum
 from typing import Optional
 
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Enum,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -20,6 +24,17 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from sophia.db.base import Base, TimestampMixin
+
+
+class IntelligenceDomain(str, PyEnum):
+    """Six intelligence domains per client profile."""
+
+    BUSINESS = "business"
+    INDUSTRY = "industry"
+    COMPETITORS = "competitors"
+    CUSTOMERS = "customers"
+    PRODUCT_SERVICE = "product_service"
+    SALES_PROCESS = "sales_process"
 
 
 class Client(TimestampMixin, Base):
@@ -172,3 +187,79 @@ class AuditLog(TimestampMixin, Base):
     __table_args__ = (
         Index("ix_audit_log_client_action", "client_id", "action"),
     )
+
+
+class IntelligenceEntry(TimestampMixin, Base):
+    """Progressive intelligence entry per client per domain.
+
+    Accumulates over time with timestamped audit trail. Depth score
+    is computed dynamically from field richness and freshness, not stored.
+    Entries can be superseded for deduplication.
+    """
+
+    __tablename__ = "intelligence_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id"), nullable=False, index=True
+    )
+    domain: Mapped[IntelligenceDomain] = mapped_column(
+        Enum(IntelligenceDomain), nullable=False, index=True
+    )
+    fact: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(
+        String(500), nullable=False
+    )  # Format: "research:finding_id:123", "operator:conversation", "web:url"
+    confidence: Mapped[float] = mapped_column(
+        Float, default=0.5, nullable=False
+    )
+    is_significant: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )  # Boolean: warrants operator notification
+    supersedes_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("intelligence_entries.id"), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_intelligence_client_domain", "client_id", "domain"),
+    )
+
+
+class IntelligenceInstitutionalKnowledge(TimestampMixin, Base):
+    """Anonymized institutional knowledge from client intelligence.
+
+    Created from IntelligenceEntry data with identifying information stripped.
+    Source client_id is set to null after anonymization.
+    Used for semantic search during onboarding of similar clients.
+    """
+
+    __tablename__ = "intelligence_institutional_knowledge"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_client_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )  # Set to null after anonymization
+    industry_vertical: Mapped[str] = mapped_column(
+        String(200), nullable=False
+    )
+    business_size_category: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # micro, small, medium
+    region_type: Mapped[str] = mapped_column(
+        String(50), nullable=False
+    )  # small_town, suburban, urban
+    domain: Mapped[IntelligenceDomain] = mapped_column(
+        Enum(IntelligenceDomain), nullable=False
+    )
+    insight: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # Anonymized fact
+
+    from sqlalchemy import JSON
+
+    what_worked: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )  # JSON list
+    what_didnt_work: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )  # JSON list

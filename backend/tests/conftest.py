@@ -16,10 +16,18 @@ from sophia.intelligence.models import (  # noqa: F401 -- ensure models register
     AuditLog,
     Client,
     EnrichmentLog,
+    IntelligenceEntry,
+    IntelligenceInstitutionalKnowledge,
     VoiceMaterial,
     VoiceProfile,
 )
 from sophia.institutional.models import InstitutionalKnowledge  # noqa: F401
+from sophia.research.models import (  # noqa: F401 -- ensure models registered
+    Competitor,
+    CompetitorSnapshot,
+    PlatformIntelligence,
+    ResearchFinding,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 

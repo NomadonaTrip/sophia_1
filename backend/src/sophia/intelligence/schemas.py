@@ -152,3 +152,56 @@ class AuditLogResponse(BaseModel):
     actor: str
     details: Optional[dict] = None
     created_at: datetime
+
+
+# -- Intelligence Profile Schemas -------------------------------------------
+
+
+class DomainScore(BaseModel):
+    """Depth and freshness score for a single intelligence domain.
+
+    Depth is rated 1-5 based on richness of understanding (not just field counts).
+    Freshness is 0-1 based on how current the entries are.
+    """
+
+    domain: str  # IntelligenceDomain value
+    depth: float = Field(..., ge=0, le=5)
+    freshness: float = Field(..., ge=0, le=1)
+    entry_count: int
+    oldest_entry: Optional[datetime] = None
+    newest_entry: Optional[datetime] = None
+
+
+class IntelligenceProfileResponse(BaseModel):
+    """Full intelligence profile summary for a client."""
+
+    client_id: int
+    domain_scores: list[DomainScore]
+    overall_completeness: float = Field(..., ge=0, le=100)
+    strategic_narrative: Optional[str] = None
+    gaps: list[str]
+
+
+class ICPPersona(BaseModel):
+    """Ideal Customer Profile persona assembled from CUSTOMERS domain intelligence.
+
+    2-3 named personas per client with demographics, pain points,
+    content preferences, and platform behavior.
+    """
+
+    name: str  # e.g., "Budget-Conscious Homeowner Beth"
+    demographics: str
+    pain_points: list[str]
+    content_preferences: list[str]
+    platform_behavior: str  # e.g., "Scrolls Facebook evenings, engages with before/after photos"
+
+
+class IntelligenceEntryCreate(BaseModel):
+    """Schema for creating a new intelligence entry."""
+
+    client_id: int
+    domain: str  # IntelligenceDomain value
+    fact: str
+    source: str
+    confidence: float = Field(0.5, ge=0, le=1)
+    is_significant: bool = False
