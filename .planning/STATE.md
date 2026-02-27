@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-02-27T20:30:25Z"
+stopped_at: Completed 04-03-PLAN.md (publishing pipeline and recovery)
+last_updated: "2026-02-27T22:05:25Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 16
-  completed_plans: 12
+  completed_plans: 14
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 4: Approval & Publishing Workflow**
 - Status: In Progress
-- Current Plan: 2/5
-- Plans: 1/5 complete
+- Current Plan: 4/5
+- Plans: 3/5 complete
 
 ## Milestone Progress
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
-| 4 | ◐ | 1/5 | 20% |
+| 4 | ◐ | 3/5 | 60% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: ████████░░ 75%
+Progress: █████████░ 87%
 
 ## Decision Log
 
@@ -99,6 +99,12 @@ Progress: ████████░░ 75%
 | 2026-02-27 | Event bus drops events for slow consumers (QueueFull) | Phase 04-01: non-blocking publisher, bounded memory per subscriber |
 | 2026-02-27 | GlobalPublishState as separate table | Phase 04-01: operator can pause all publishing globally |
 | 2026-02-27 | Recovery endpoint creates RecoveryLog audit trail | Phase 04-01: full traceability for content recovery actions |
+| 2026-02-27 | APScheduler separate unencrypted SQLite job store | Phase 04-03: SQLCipher PRAGMA key incompatible with APScheduler's SQLAlchemyJobStore |
+| 2026-02-27 | MCP dispatch as NotImplementedError in publishing executor | Phase 04-03: same pattern as Phase 2 research, tests mock at _dispatch_mcp level |
+| 2026-02-27 | NotificationService as single dispatch point | Phase 04-03: executor/recovery call notification_service, not event_bus directly |
+| 2026-02-27 | Instagram recovery manual fallback | Phase 04-03: ig-mcp has no delete support, falls back to manual_recovery_needed |
+| 2026-02-27 | Naive datetime comparison for SQLite compatibility | Phase 04-03: SQLCipher strips timezone info from DateTime columns |
+| 2026-02-27 | handle_recovery_command bridges sync CLI to async recovery | Phase 04-03: uses asyncio.run() for sync-to-async bridge |
 
 ## Performance Metrics
 
@@ -116,12 +122,13 @@ Progress: ████████░░ 75%
 | 03-03 | 14min | 2 | 7 |
 | 03-04 | 6min | 1 | 2 |
 | 04-01 | 8min | 2 | 15 |
+| 04-03 | 9min | 2 | 12 |
 
 ## Last Session
 
-**Stopped at:** Completed 04-01-PLAN.md
-**Resume with:** Phase 4 plan 2
-**Resume file:** .planning/phases/04-*/04-02-PLAN.md
+**Stopped at:** Completed 04-03-PLAN.md (publishing pipeline and recovery protocol)
+**Resume with:** Phase 4 Plan 04-04 (approval UI frontend)
+**Resume file:** .planning/phases/04-*/04-04-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 04-01-PLAN.md execution*
+*Last updated: 2026-02-27 after 04-03-PLAN.md execution*

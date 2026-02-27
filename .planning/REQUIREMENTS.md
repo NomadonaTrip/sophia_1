@@ -46,8 +46,8 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 - [x] **APPR-01**: Operator can review, approve, edit, or reject content through CLI (Sprint 0), web app, or Telegram (Sprint 1) (FR24)
 - [x] **APPR-02**: Operator can approve content for automated publishing or manual copy-paste posting (FR25)
-- [ ] **APPR-03**: Sophia can publish approved content to Facebook and Instagram via MCP (FR26)
-- [ ] **APPR-04**: Sophia can schedule posts respecting cadence, timing, and rate limits (FR27)
+- [x] **APPR-03**: Sophia can publish approved content to Facebook and Instagram via MCP (FR26)
+- [x] **APPR-04**: Sophia can schedule posts respecting cadence, timing, and rate limits (FR27)
 - [x] **APPR-05**: Approval state is consistent across all interfaces in real time (FR28)
 - [x] **APPR-06**: Sophia never publishes content without explicit human approval (FR29)
 - [ ] **APPR-07**: Operator can use browser-based voice input via Web Speech API (FR65)
@@ -93,8 +93,8 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 - [x] **SAFE-01**: Sophia can enforce cross-client data isolation at aggregated pattern level (FR49)
 - [x] **SAFE-02**: Sophia can encrypt all client data at rest (FR50)
-- [ ] **SAFE-03**: Sophia can execute content recovery protocol for published content issues (FR51)
-- [ ] **SAFE-04**: Operator can trigger content recovery for any published post (FR52)
+- [x] **SAFE-03**: Sophia can execute content recovery protocol for published content issues (FR51)
+- [x] **SAFE-04**: Operator can trigger content recovery for any published post (FR52)
 - [x] **SAFE-05**: Sophia can filter content for sensitivity (FR53)
 - [x] **SAFE-06**: Sophia can check generated content for originality (FR54)
 
@@ -167,13 +167,13 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | SAFE-06 | Phase 3 | Complete |
 | APPR-01 | Phase 4 | Complete |
 | APPR-02 | Phase 4 | Complete |
-| APPR-03 | Phase 4 | Pending |
-| APPR-04 | Phase 4 | Pending |
+| APPR-03 | Phase 4 | Complete |
+| APPR-04 | Phase 4 | Complete |
 | APPR-05 | Phase 4 | Complete |
 | APPR-06 | Phase 4 | Complete |
 | APPR-07 | Phase 4 | Pending |
-| SAFE-03 | Phase 4 | Pending |
-| SAFE-04 | Phase 4 | Pending |
+| SAFE-03 | Phase 4 | Complete |
+| SAFE-04 | Phase 4 | Complete |
 | ANLY-01 | Phase 5 | Pending |
 | ANLY-02 | Phase 5 | Pending |
 | ANLY-03 | Phase 5 | Pending |
