@@ -28,6 +28,12 @@ from sophia.research.models import (  # noqa: F401 -- ensure models registered
     PlatformIntelligence,
     ResearchFinding,
 )
+from sophia.content.models import (  # noqa: F401 -- ensure models registered
+    ContentDraft,
+    EvergreenEntry,
+    FormatPerformance,
+    RegenerationLog,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 

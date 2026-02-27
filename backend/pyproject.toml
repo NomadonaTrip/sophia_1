@@ -16,11 +16,13 @@ dependencies = [
     "pydantic-settings>=2.13.1",
     "python-dotenv>=1.2.1",
     "rapidfuzz>=3.14.3",
+    "spacy>=3.8.11",
     "sqlalchemy>=2.0.47",
     "sqlcipher3>=0.6.2",
     "structlog>=25.5.0",
     "tantivy>=0.25.1",
     "textstat>=0.7.13",
+    "transformers<5.0",
 ]
 
 [build-system]
