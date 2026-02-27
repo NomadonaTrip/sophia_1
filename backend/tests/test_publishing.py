@@ -376,14 +376,11 @@ async def test_cadence_enforcement_posts_per_week(db_session, sample_client):
             cadence_rules=cadence,
         )
 
-        # Should be at least 7 days from the first post's scheduled time
-        first_entry = (
-            db_session.query(PublishingQueueEntry)
-            .filter_by(content_draft_id=1)
-            .first()
-        )
         # The 4th entry should be pushed beyond the current week window
-        assert entry4.scheduled_at > now + timedelta(days=6)
+        # Compare naive datetimes since SQLite may strip timezone
+        entry4_time = entry4.scheduled_at.replace(tzinfo=None) if entry4.scheduled_at.tzinfo else entry4.scheduled_at
+        now_naive = now.replace(tzinfo=None)
+        assert entry4_time > now_naive + timedelta(days=6)
     finally:
         scheduler.shutdown(wait=False)
 
