@@ -3,6 +3,8 @@ import { createBrowserRouter, RouterProvider } from 'react-router'
 
 import { Layout } from '@/routes/layout'
 import { MorningBrief } from '@/routes/morning-brief'
+import { ApprovalQueue } from '@/routes/approval-queue'
+import { ClientDrillDown } from '@/routes/client'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -27,11 +29,11 @@ const router = createBrowserRouter([
       { path: 'morning-brief', element: <MorningBrief /> },
       {
         path: 'client-drill-down',
-        element: <PlaceholderRoute title="Client Drill-Down" />,
+        element: <ClientDrillDown />,
       },
       {
         path: 'approval-queue',
-        element: <PlaceholderRoute title="Approval Queue" />,
+        element: <ApprovalQueue />,
       },
       {
         path: 'calibration',
