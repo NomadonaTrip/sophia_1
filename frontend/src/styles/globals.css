@@ -80,6 +80,23 @@ body {
   animation: sage-dot-pulse 1.2s ease-in-out infinite;
 }
 
+/* Coral border pulse for rejection animation */
+@keyframes reject-pulse {
+  0% {
+    border-color: var(--color-midnight-700);
+  }
+  50% {
+    border-color: var(--color-coral-500);
+  }
+  100% {
+    border-color: var(--color-midnight-700);
+  }
+}
+
+.animate-reject-pulse {
+  animation: reject-pulse 0.4s ease-in-out;
+}
+
 /* Tabular numbers for stats */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

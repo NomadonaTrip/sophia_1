@@ -16,6 +16,9 @@ import { HealthStrip } from '@/components/health/HealthStrip'
 import { ChatInputBar } from '@/components/chat/ChatInputBar'
 import { ChatMessageArea, type ChatMessage } from '@/components/chat/ChatMessageArea'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { NetworkErrorBanner } from '@/components/approval/NetworkErrorBanner'
+import { StaleContentToastContainer } from '@/components/approval/StaleContentToast'
+import { useSSE } from '@/hooks/useSSE'
 
 const NAV_TABS = [
   { label: 'Morning Brief', path: '/morning-brief', icon: LayoutGrid },
@@ -46,6 +49,9 @@ export function Layout() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [panelCollapsed, setPanelCollapsed] = useState(false)
   const responseIndexRef = useRef(0)
+
+  // Activate SSE connection for real-time sync
+  useSSE()
 
   const currentPath =
     location.pathname === '/' ? '/morning-brief' : location.pathname
@@ -84,14 +90,14 @@ export function Layout() {
     <div className="flex min-h-screen flex-col bg-midnight-900">
       {/* Top nav */}
       <header className="sticky top-0 z-40 bg-midnight-900/80 backdrop-blur-sm border-b border-midnight-700">
-        <div className="mx-auto max-w-5xl flex items-center gap-2 px-4 py-2.5">
+        <div className="mx-auto w-[60%] flex items-center gap-2 px-4 py-2.5">
           {/* Logo */}
           <span className="font-sophia italic text-lg text-sage-300 mr-4 flex-none">
             Sophia
           </span>
 
           {/* Tab nav */}
-          <nav className="flex items-center gap-1 overflow-x-auto" role="tablist">
+          <nav className="flex flex-1 items-center justify-between overflow-x-auto" role="tablist">
             {NAV_TABS.map((tab) => {
               const isActive = currentPath === tab.path
               const Icon = tab.icon
@@ -118,6 +124,12 @@ export function Layout() {
         </div>
       </header>
 
+      {/* Network error banner */}
+      <NetworkErrorBanner />
+
+      {/* Stale content toast overlay */}
+      <StaleContentToastContainer />
+
       {/* Health strip */}
       <HealthStrip
         cruising={12}
@@ -131,7 +143,7 @@ export function Layout() {
         {/* Route content panel — collapsible */}
         {!panelCollapsed && (
           <ScrollArea className="flex-1 min-h-0">
-            <div className="mx-auto max-w-[720px] px-4 py-4">
+            <div className="mx-auto w-[60%] px-4 py-4">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={currentPath}
@@ -174,7 +186,7 @@ export function Layout() {
             panelCollapsed ? 'flex-1' : 'h-[30vh] min-h-[30vh]',
           )}
         >
-          <div className="mx-auto max-w-[720px] px-4">
+          <div className="mx-auto w-[60%] px-4">
             <ChatMessageArea messages={messages} isThinking={isThinking} />
           </div>
         </div>
