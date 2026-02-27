@@ -123,11 +123,11 @@ export function Layout() {
         postsRemaining={8}
       />
 
-      {/* Main content area with chat */}
-      <main className="flex-1 flex flex-col pb-20 overflow-hidden">
-        <ScrollArea className="flex-1">
+      {/* Main content: route content (top) + conversation (bottom, 30vh min) */}
+      <main className="flex-1 flex flex-col pb-16 overflow-hidden">
+        {/* Route content — takes remaining space above conversation */}
+        <ScrollArea className="flex-1 min-h-0">
           <div className="mx-auto max-w-[720px] px-4 py-4">
-            {/* Route content */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPath}
@@ -139,13 +139,15 @@ export function Layout() {
                 <Outlet />
               </motion.div>
             </AnimatePresence>
-
-            {/* Conversation area -- at least 30% of viewport height */}
-            <div className="mt-4 border-t border-midnight-700 pt-3">
-              <ChatMessageArea messages={messages} isThinking={isThinking} />
-            </div>
           </div>
         </ScrollArea>
+
+        {/* Conversation area — fixed 30% of viewport, always visible */}
+        <div className="h-[30vh] min-h-[30vh] border-t border-midnight-700 overflow-y-auto">
+          <div className="mx-auto max-w-[720px] px-4">
+            <ChatMessageArea messages={messages} isThinking={isThinking} />
+          </div>
+        </div>
       </main>
 
       {/* Fixed bottom chat input */}
