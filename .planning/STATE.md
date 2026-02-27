@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 02-01-PLAN.md
-last_updated: "2026-02-27T06:35:00.000Z"
+stopped_at: Completed 02-02-PLAN.md
+last_updated: "2026-02-27T06:51:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 12
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State: Sophia
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 2: Research & Semantic Intelligence**
 - Status: In Progress
-- Current Plan: 1/3
-- Plans: 1/3 complete
+- Current Plan: 2/3
+- Plans: 2/3 complete
 
 ## Milestone Progress
 
 | Phase | Status | Plans | Progress |
 |-------|--------|-------|----------|
 | 1 | ● | 3/3 | 100% |
-| 2 | ◐ | 1/3 | 33% |
+| 2 | ◐ | 2/3 | 67% |
 | 3 | ○ | 0/3 | 0% |
 | 4 | ○ | 0/3 | 0% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/3 | 0% |
 
-Progress: ███░░░░░░░ 33%
+Progress: ████░░░░░░ 42%
 
 ## Decision Log
 
@@ -63,6 +63,10 @@ Progress: ███░░░░░░░ 33%
 | 2026-02-27 | Dedup fallback to exact text match | Phase 02-01: ensures dedup works when LanceDB empty or model unavailable |
 | 2026-02-27 | Depth scoring: weighted count + source diversity + confidence | Phase 02-01: richness-based 1-5 rating with freshness decay at 30/90 days |
 | 2026-02-27 | FTS index deferred to first write | Phase 02-01: LanceDB Tantivy requires data before FTS index creation |
+| 2026-02-27 | Freshness uses expires_at not relevance_score | Phase 02-02: expires_at is authoritative; created_at server default may not reflect actual age |
+| 2026-02-27 | ID-based ordering for deterministic snapshot queries | Phase 02-02: SQLite func.now() second-level granularity causes non-deterministic ordering |
+| 2026-02-27 | FastAPI router with placeholder DB dependency | Phase 02-02: keeps router independently testable, explicit wiring point for app assembly |
+| 2026-02-27 | MCP dispatch as NotImplementedError integration point | Phase 02-02: tests mock at _dispatch_query level, trivial to wire real servers later |
 
 ## Performance Metrics
 
@@ -72,12 +76,13 @@ Progress: ███░░░░░░░ 33%
 | 01-02 | 5min | 2 | 10 |
 | 01-03 | 7min | 2 | 3 |
 | 02-01 | 30min | 2 | 15 |
+| 02-02 | 10min | 2 | 9 |
 
 ## Last Session
 
-**Stopped at:** Completed 02-01-PLAN.md
+**Stopped at:** Completed 02-02-PLAN.md
 **Resume with:** Next plan in phase 02
-**Resume file:** .planning/phases/02-research-semantic-intelligence/02-02-PLAN.md
+**Resume file:** .planning/phases/02-research-semantic-intelligence/02-03-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 02-01-PLAN.md execution*
+*Last updated: 2026-02-27 after 02-02-PLAN.md execution*

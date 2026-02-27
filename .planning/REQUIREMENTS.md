@@ -20,9 +20,9 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Research & Intelligence
 
-- [ ] **RSRCH-01**: Sophia can research current conditions per client: local news, trends, competitive activity, community discussions (FR9)
-- [ ] **RSRCH-02**: Sophia can scope research to each client's defined market scope (FR10)
-- [ ] **RSRCH-03**: Sophia can monitor competitor social media and identify strategic opportunities or threats (FR11)
+- [x] **RSRCH-01**: Sophia can research current conditions per client: local news, trends, competitive activity, community discussions (FR9)
+- [x] **RSRCH-02**: Sophia can scope research to each client's defined market scope (FR10)
+- [x] **RSRCH-03**: Sophia can monitor competitor social media and identify strategic opportunities or threats (FR11)
 - [x] **RSRCH-04**: Sophia can build progressive six-domain intelligence profiles per client with completeness tracking (FR12)
 - [ ] **RSRCH-05**: Sophia can detect platform algorithm changes by identifying uniform engagement shifts across portfolio (FR13)
 - [ ] **RSRCH-06**: Sophia can generate diagnostic reports when client metrics plateau (FR14)
@@ -145,9 +145,9 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | CLNT-08 | Phase 1 | Complete |
 | SAFE-01 | Phase 1 | Complete |
 | SAFE-02 | Phase 1 | Complete |
-| RSRCH-01 | Phase 2 | Pending |
-| RSRCH-02 | Phase 2 | Pending |
-| RSRCH-03 | Phase 2 | Pending |
+| RSRCH-01 | Phase 2 | Complete |
+| RSRCH-02 | Phase 2 | Complete |
+| RSRCH-03 | Phase 2 | Complete |
 | RSRCH-04 | Phase 2 | Complete |
 | RSRCH-05 | Phase 2 | Pending |
 | RSRCH-06 | Phase 2 | Pending |
