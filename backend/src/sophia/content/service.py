@@ -1,17 +1,21 @@
 """Content generation orchestrator: three-input validation, batch generation,
-voice alignment integration, ranking, and persistence.
+voice alignment integration, quality gates, ranking, and persistence.
 
 This is Sophia's primary value delivery -- generating content that sounds like
 the client, is grounded in real research, and is platform-optimized.
 
 The orchestrator enforces the research-first rule: no content is generated
 without all three mandatory inputs (research, intelligence, voice profile).
+After generation, every draft passes through the quality gate pipeline before
+entering the operator's approval queue.
 """
 
 from __future__ import annotations
 
+import json
 import logging
-from datetime import datetime, timezone
+from collections import Counter
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
@@ -21,6 +25,7 @@ from sophia.content.prompt_builder import (
     build_batch_prompts,
     build_image_prompt,
 )
+from sophia.content.quality_gates import run_pipeline as run_quality_gates
 from sophia.content.voice_alignment import (
     compute_voice_baseline,
     compute_voice_confidence,
@@ -138,16 +143,62 @@ def generate_content_batch(
                 "high": 80.0,
             }.get(confidence_level, 50.0)
 
-    # Step 7: Rank drafts
-    drafts = _rank_drafts(drafts, intelligence)
-
-    # Step 8: Persist to database
+    # Step 7: Run quality gate pipeline on each draft
     for draft in drafts:
+        if draft.copy:
+            report = run_quality_gates(db, draft, client_id)
+            draft.gate_status = report.status
+            draft.gate_report = report.to_dict()
+
+            # Track gate failures for systemic issue detection
+            for gate_result in report.results:
+                failed = gate_result.status.value == "rejected"
+                track_gate_failure(db, client_id, gate_result.gate_name, failed)
+
+            # If auto-fixed, the pipeline already applied the fix to draft.copy
+            if report.status == "passed_with_fix":
+                logger.info(
+                    "Draft auto-fixed for client %d: %s",
+                    client_id,
+                    report.summary_badge,
+                )
+
+    # Step 8: Filter out rejected drafts for ranking
+    # Keep rejected drafts in the batch for persistence (learning) but
+    # exclude them from ranking and the final return list.
+    active_drafts = [d for d in drafts if d.gate_status != "rejected"]
+    rejected_drafts = [d for d in drafts if d.gate_status == "rejected"]
+
+    if not active_drafts and drafts:
+        # ALL drafts rejected -- systemic issue
+        gate_failures = Counter()
+        for d in rejected_drafts:
+            report_data = d.gate_report or {}
+            rejected_by = report_data.get("rejected_by", "unknown")
+            gate_failures[rejected_by] += 1
+
+        failure_summary = ", ".join(
+            f"{gate}: {count}" for gate, count in gate_failures.most_common()
+        )
+        raise ContentGenerationError(
+            message="All content drafts rejected by quality gates",
+            detail=f"Gate failures: {failure_summary}",
+            reason="all_drafts_rejected",
+            suggestion="Check systemic gate issues with check_systemic_gate_issues(). "
+            "The most common failure gates may need recalibration.",
+        )
+
+    # Step 9: Rank active (non-rejected) drafts
+    active_drafts = _rank_drafts(active_drafts, intelligence)
+
+    # Step 10: Persist ALL drafts (including rejected) to database for learning
+    all_drafts = active_drafts + rejected_drafts
+    for draft in all_drafts:
         db.add(draft)
     db.flush()
 
-    # Save evergreen drafts to bank
-    for draft in drafts:
+    # Save evergreen drafts to bank (only non-rejected)
+    for draft in active_drafts:
         if draft.freshness_window == "evergreen" or draft.is_evergreen:
             entry = EvergreenEntry(
                 client_id=client_id,
@@ -161,10 +212,11 @@ def generate_content_batch(
     db.commit()
 
     # Refresh to get IDs
-    for draft in drafts:
+    for draft in all_drafts:
         db.refresh(draft)
 
-    return drafts
+    # Return only non-rejected drafts (operator never sees rejected in queue)
+    return active_drafts
 
 
 def get_content_drafts(
@@ -192,6 +244,172 @@ def get_content_drafts(
         query = query.filter(ContentDraft.status == status)
 
     return query.order_by(ContentDraft.id.desc()).limit(limit).all()
+
+
+# -- Gate Tracking and Statistics --------------------------------------------
+
+
+def track_gate_failure(
+    db: Session, client_id: int, gate_name: str, failed: bool
+) -> None:
+    """Track a gate pass/fail event for systemic issue detection.
+
+    Stores gate results as lightweight JSON on the draft's gate_report field.
+    For aggregate tracking, we query ContentDraft.gate_report across recent
+    drafts rather than maintaining a separate counter table -- simpler schema
+    and the data is already there.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        gate_name: Name of the gate.
+        failed: True if the gate failed (rejected), False if passed.
+    """
+    # Gate results are already stored on each draft's gate_report.
+    # This function is a lightweight hook for real-time logging.
+    if failed:
+        logger.info(
+            "Gate failure tracked: client_id=%d gate=%s",
+            client_id,
+            gate_name,
+        )
+
+
+def check_systemic_gate_issues(
+    db: Session, client_id: int, days: int = 30
+) -> list[str]:
+    """Check for systemic gate failure patterns.
+
+    Queries gate results from the last N days. If any gate exceeds 30%
+    failure rate, returns a list of issue strings with recommendations.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        days: Lookback window in days (default 30).
+
+    Returns:
+        List of issue strings. Empty if no systemic issues.
+    """
+    stats = get_gate_statistics(db, client_id, days=days)
+    issues: list[str] = []
+
+    recommendations = {
+        "sensitivity": "Sensitivity profile may need recalibration",
+        "voice_alignment": "Voice profile may need update or recalibration",
+        "plagiarism_originality": "Content variety may be insufficient -- consider broadening research scope",
+        "ai_pattern_detection": "Generation style may need adjustment",
+        "research_grounding": "Research coverage may be insufficient for content claims",
+        "brand_safety": "Brand safety guardrails may need review",
+    }
+
+    per_gate = stats.get("per_gate", {})
+    for gate_name, gate_stats in per_gate.items():
+        failure_rate = gate_stats.get("failure_rate", 0.0)
+        if failure_rate > 0.30:
+            recommendation = recommendations.get(
+                gate_name, f"Gate '{gate_name}' may need review"
+            )
+            issues.append(
+                f"{gate_name}: {failure_rate:.0%} failure rate -- {recommendation}"
+            )
+
+    return issues
+
+
+def get_gate_statistics(
+    db: Session, client_id: int, days: int = 30
+) -> dict:
+    """Compute per-gate pass rates and statistics.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        days: Lookback window in days (default 30).
+
+    Returns:
+        Dict with:
+        - overall_pass_rate: float (0.0 to 1.0)
+        - total_drafts: int
+        - per_gate: dict[gate_name, {pass_rate, failure_rate, total, failures, common_failures}]
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # Query drafts with gate reports from the lookback window
+    drafts = (
+        db.query(ContentDraft)
+        .filter(
+            ContentDraft.client_id == client_id,
+            ContentDraft.gate_report.isnot(None),
+            ContentDraft.created_at >= cutoff,
+        )
+        .all()
+    )
+
+    if not drafts:
+        return {
+            "overall_pass_rate": 1.0,
+            "total_drafts": 0,
+            "per_gate": {},
+        }
+
+    # Aggregate gate results
+    gate_totals: dict[str, int] = Counter()
+    gate_failures: dict[str, int] = Counter()
+    gate_failure_reasons: dict[str, list[str]] = {}
+    pipeline_passes = 0
+
+    for draft in drafts:
+        report = draft.gate_report
+        if not isinstance(report, dict):
+            continue
+
+        status = report.get("status", "")
+        if status in ("passed", "passed_with_fix"):
+            pipeline_passes += 1
+
+        results = report.get("results", [])
+        for result in results:
+            gate_name = result.get("gate_name", "")
+            gate_status = result.get("status", "")
+            gate_totals[gate_name] += 1
+            if gate_status == "rejected":
+                gate_failures[gate_name] += 1
+                detail = result.get("detail", "")
+                if gate_name not in gate_failure_reasons:
+                    gate_failure_reasons[gate_name] = []
+                if detail:
+                    gate_failure_reasons[gate_name].append(detail)
+
+    total_drafts = len(drafts)
+    overall_pass_rate = pipeline_passes / total_drafts if total_drafts > 0 else 1.0
+
+    per_gate: dict[str, dict] = {}
+    for gate_name in gate_totals:
+        total = gate_totals[gate_name]
+        failures = gate_failures.get(gate_name, 0)
+        failure_rate = failures / total if total > 0 else 0.0
+        pass_rate = 1.0 - failure_rate
+
+        # Get most common failure reasons
+        reasons = gate_failure_reasons.get(gate_name, [])
+        common_failures = Counter(reasons).most_common(3)
+
+        per_gate[gate_name] = {
+            "pass_rate": pass_rate,
+            "failure_rate": failure_rate,
+            "total": total,
+            "failures": failures,
+            "common_failures": [
+                {"reason": r, "count": c} for r, c in common_failures
+            ],
+        }
+
+    return {
+        "overall_pass_rate": overall_pass_rate,
+        "total_drafts": total_drafts,
+        "per_gate": per_gate,
+    }
 
 
 # -- Three-Input Validation --------------------------------------------------
