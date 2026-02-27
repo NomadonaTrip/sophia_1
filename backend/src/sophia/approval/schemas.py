@@ -29,7 +29,7 @@ class RejectRequest(BaseModel):
 class EditRequest(BaseModel):
     """Request body for editing a content draft."""
 
-    copy: str = Field(..., min_length=1)
+    copy: str = Field(..., min_length=1)  # noqa: shadows BaseModel.copy (intentional)
     custom_post_time: Optional[datetime] = None
 
 
