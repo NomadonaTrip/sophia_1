@@ -83,12 +83,14 @@ Plans:
   3. Sophia never publishes content without explicit human approval
   4. Operator can trigger content recovery for any published post and Sophia executes the recovery protocol
   5. Operator can use browser-based voice input via Web Speech API in the web interface
-**Plans**: TBD
+**Plans**: 5 plans across 3 waves
 
 Plans:
-- [ ] 04-01: TBD
-- [ ] 04-02: TBD
-- [ ] 04-03: TBD
+- [ ] 04-01-PLAN.md — Backend approval infrastructure: models, state machine, service, event bus, CLI, router (Wave 1) [APPR-01, APPR-02, APPR-05, APPR-06]
+- [ ] 04-02-PLAN.md — Frontend scaffold: Vite + React + shadcn/ui + Midnight Sage design system + layout shell (Wave 1) [APPR-01]
+- [ ] 04-03-PLAN.md — Publishing pipeline: APScheduler, MCP dispatch, rate limiter, cadence, recovery (Wave 2, depends on 04-01) [APPR-03, APPR-04, SAFE-03, SAFE-04]
+- [ ] 04-04-PLAN.md — Frontend approval UI: content cards, SSE sync, keyboard shortcuts, batch approval (Wave 2, depends on 04-01, 04-02) [APPR-01, APPR-05]
+- [ ] 04-05-PLAN.md — Telegram bot + browser voice input (Wave 3, depends on 04-01, 04-04) [APPR-01, APPR-07]
 
 ### Phase 5: Performance Analytics & Evaluation
 **Goal**: Sophia tracks engagement metrics, evaluates content performance against KPIs, and builds a decision quality feedback loop
