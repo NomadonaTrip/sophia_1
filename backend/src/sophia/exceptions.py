@@ -116,3 +116,22 @@ class ContentGenerationError(SophiaError):
     ) -> None:
         self.reason = reason
         super().__init__(message, detail, suggestion)
+
+
+class RegenerationLimitError(SophiaError):
+    """Raised when a draft has reached the maximum regeneration attempts (3).
+
+    Suggests starting fresh from different research rather than further
+    iterating on the same draft.
+    """
+
+    def __init__(
+        self,
+        message: str = "Regeneration limit reached",
+        detail: str | None = None,
+        suggestion: str | None = (
+            "Consider starting fresh from different research. "
+            "You've reached the 3-attempt limit for this option."
+        ),
+    ) -> None:
+        super().__init__(message, detail, suggestion)

@@ -200,3 +200,54 @@ class RegenerationLog(TimestampMixin, Base):
     )
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     guidance: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class CalibrationSession(TimestampMixin, Base):
+    """Interactive voice calibration session: A/B comparison rounds.
+
+    Per-client only (no cross-client mixing). Operator picks between
+    two stylistic variations over 5-10 rounds to refine voice profile.
+    """
+
+    __tablename__ = "calibration_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    client_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("clients.id"), nullable=False, index=True
+    )
+    total_rounds: Mapped[int] = mapped_column(
+        Integer, default=10, nullable=False
+    )
+    rounds_completed: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), default="in_progress", nullable=False
+    )  # "in_progress", "completed", "cancelled"
+    voice_deltas: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )  # aggregated voice preference deltas
+
+
+class CalibrationRound(TimestampMixin, Base):
+    """A single A/B comparison round within a calibration session.
+
+    Each round presents two versions of the same content idea with
+    different stylistic interpretations. Operator picks one.
+    """
+
+    __tablename__ = "calibration_rounds"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("calibration_sessions.id"), nullable=False, index=True
+    )
+    round_number: Mapped[int] = mapped_column(Integer, nullable=False)
+    option_a: Mapped[str] = mapped_column(Text, nullable=False)
+    option_b: Mapped[str] = mapped_column(Text, nullable=False)
+    selected: Mapped[Optional[str]] = mapped_column(
+        String(1), nullable=True
+    )  # "a" or "b"
+    voice_delta: Mapped[Optional[dict]] = mapped_column(
+        JSON, nullable=True
+    )  # what the selection reveals about voice preferences

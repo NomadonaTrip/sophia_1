@@ -1,5 +1,6 @@
 """Content generation orchestrator: three-input validation, batch generation,
-voice alignment integration, quality gates, ranking, and persistence.
+voice alignment integration, quality gates, ranking, regeneration, format
+adaptation, evergreen bank management, and persistence.
 
 This is Sophia's primary value delivery -- generating content that sounds like
 the client, is grounded in real research, and is platform-optimized.
@@ -8,19 +9,28 @@ The orchestrator enforces the research-first rule: no content is generated
 without all three mandatory inputs (research, intelligence, voice profile).
 After generation, every draft passes through the quality gate pipeline before
 entering the operator's approval queue.
+
+Regenerated content also runs through the FULL quality gate pipeline (locked
+decision: no shortcuts for regeneration).
 """
 
 from __future__ import annotations
 
 import json
 import logging
+import re
 from collections import Counter
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from sqlalchemy.orm import Session
 
-from sophia.content.models import ContentDraft, EvergreenEntry
+from sophia.content.models import (
+    ContentDraft,
+    EvergreenEntry,
+    FormatPerformance,
+    RegenerationLog,
+)
 from sophia.content.prompt_builder import (
     build_batch_prompts,
     build_image_prompt,
@@ -31,7 +41,7 @@ from sophia.content.voice_alignment import (
     compute_voice_confidence,
     score_voice_alignment,
 )
-from sophia.exceptions import ContentGenerationError
+from sophia.exceptions import ContentGenerationError, RegenerationLimitError
 
 logger = logging.getLogger(__name__)
 
@@ -629,6 +639,644 @@ def _rank_drafts(
         draft.rank_reasoning = "; ".join(reasons) if reasons else "standard ranking"
 
     return [draft for _, draft in scored]
+
+
+# -- Regeneration Service (CONT-05) ------------------------------------------
+
+
+def regenerate_draft(
+    db: Session, draft_id: int, guidance: str
+) -> ContentDraft:
+    """Regenerate a draft with operator's free-text guidance.
+
+    - Enforces 3-attempt limit per draft
+    - Re-validates three mandatory inputs (research-first rule applies)
+    - Runs FULL quality gate pipeline on regenerated content (locked decision)
+    - Logs guidance to RegenerationLog for pattern learning
+
+    Args:
+        db: SQLAlchemy session.
+        draft_id: ID of the draft to regenerate.
+        guidance: Free-text guidance from operator (e.g., "Make it funnier").
+
+    Returns:
+        Updated ContentDraft with new copy.
+
+    Raises:
+        RegenerationLimitError: If regeneration_count >= 3.
+        ContentGenerationError: If three-input validation fails.
+    """
+    draft = db.query(ContentDraft).filter(ContentDraft.id == draft_id).first()
+    if draft is None:
+        raise ContentGenerationError(
+            message="Draft not found",
+            detail=f"draft_id={draft_id}",
+            reason="not_found",
+        )
+
+    # Check regeneration limit
+    if draft.regeneration_count >= 3:
+        raise RegenerationLimitError(
+            message="Regeneration limit reached for this draft",
+            detail=f"draft_id={draft_id}, attempts={draft.regeneration_count}",
+        )
+
+    # Re-validate three mandatory inputs
+    _validate_research(db, draft.client_id)
+    _validate_intelligence(db, draft.client_id)
+    _validate_voice_profile(db, draft.client_id)
+
+    # Construct regeneration context (all prior guidance for full feedback arc)
+    prior_guidance = draft.regeneration_guidance or []
+
+    # In production: this would invoke Claude Code with the regeneration prompt
+    # including: original system prompt, current draft as "previous version",
+    # the operator's guidance, and all prior guidance for this draft.
+    # For the orchestration layer, we simulate the regenerated copy.
+    regenerated_copy = f"[Regenerated with guidance: {guidance}] {draft.copy}"
+
+    # Run FULL quality gate pipeline on regenerated content (locked decision)
+    original_copy = draft.copy
+    draft.copy = regenerated_copy
+    report = run_quality_gates(db, draft, draft.client_id)
+    draft.gate_status = report.status
+    draft.gate_report = report.to_dict()
+
+    # If rejected by gates, revert copy but still log the attempt
+    if report.status == "rejected":
+        draft.copy = original_copy
+        draft.gate_status = "rejected"
+
+    # Increment regeneration_count
+    draft.regeneration_count += 1
+
+    # Append guidance to regeneration_guidance JSON array
+    prior_guidance.append(guidance)
+    draft.regeneration_guidance = prior_guidance
+
+    # Log to RegenerationLog
+    regen_log = RegenerationLog(
+        content_draft_id=draft.id,
+        client_id=draft.client_id,
+        attempt_number=draft.regeneration_count,
+        guidance=guidance,
+    )
+    db.add(regen_log)
+    db.flush()
+
+    return draft
+
+
+def _analyze_guidance_patterns(
+    db: Session, client_id: int
+) -> list[dict]:
+    """Analyze regeneration guidance for repeated patterns.
+
+    Groups similar guidance strings by keyword/phrase matching.
+    If any cluster has 5+ occurrences, returns it as a pattern with
+    a suggested voice profile update.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID to analyze.
+
+    Returns:
+        List of pattern dicts: {"pattern", "count", "suggestion"}.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=30)
+
+    logs = (
+        db.query(RegenerationLog)
+        .filter(
+            RegenerationLog.client_id == client_id,
+            RegenerationLog.created_at >= cutoff,
+        )
+        .all()
+    )
+
+    if not logs:
+        return []
+
+    # Define keyword clusters for common guidance themes
+    clusters: dict[str, list[str]] = {
+        "humor/funny": [
+            "funny", "funnier", "humor", "humorous", "joke", "witty",
+            "lighter tone", "playful", "lighthearted",
+        ],
+        "shorter/concise": [
+            "shorter", "concise", "brief", "trim", "cut down",
+            "less wordy", "tighter",
+        ],
+        "casual/informal": [
+            "casual", "informal", "relaxed", "conversational",
+            "less formal", "more chill",
+        ],
+        "professional/formal": [
+            "professional", "formal", "polished", "refined",
+            "more serious", "business-like",
+        ],
+        "emotional/personal": [
+            "emotional", "personal", "heartfelt", "authentic",
+            "vulnerable", "real", "genuine",
+        ],
+        "engaging/questions": [
+            "engaging", "question", "interactive", "call to action",
+            "hook", "attention", "engaging",
+        ],
+        "simpler/clearer": [
+            "simpler", "clearer", "easier", "plain language",
+            "straightforward", "simple",
+        ],
+    }
+
+    # Count matches per cluster
+    cluster_counts: dict[str, int] = {name: 0 for name in clusters}
+    for log in logs:
+        guidance_lower = log.guidance.lower()
+        for cluster_name, keywords in clusters.items():
+            if any(kw in guidance_lower for kw in keywords):
+                cluster_counts[cluster_name] += 1
+
+    # Build patterns for clusters with 5+ occurrences
+    suggestions_map = {
+        "humor/funny": "Increase humor level in voice profile preferences",
+        "shorter/concise": "Reduce target post length in voice profile",
+        "casual/informal": "Shift formality toward casual in voice profile",
+        "professional/formal": "Shift formality toward professional in voice profile",
+        "emotional/personal": "Increase personal/emotional tone in voice profile",
+        "engaging/questions": "Increase use of questions and CTAs in voice profile",
+        "simpler/clearer": "Reduce vocabulary complexity in voice profile",
+    }
+
+    patterns = []
+    for cluster_name, count in cluster_counts.items():
+        if count >= 5:
+            patterns.append({
+                "pattern": cluster_name,
+                "count": count,
+                "suggestion": suggestions_map.get(
+                    cluster_name,
+                    f"Update voice profile based on '{cluster_name}' pattern",
+                ),
+            })
+
+    return patterns
+
+
+def suggest_voice_profile_updates(
+    db: Session, client_id: int
+) -> list[str]:
+    """Format voice profile update suggestions from guidance patterns.
+
+    Calls _analyze_guidance_patterns and formats results as operator-facing
+    suggestions.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+
+    Returns:
+        List of formatted suggestion strings.
+    """
+    patterns = _analyze_guidance_patterns(db, client_id)
+    suggestions = []
+
+    for p in patterns:
+        suggestions.append(
+            f"You've asked for more {p['pattern']} in {p['count']} of your "
+            f"recent regeneration requests. {p['suggestion']}."
+        )
+
+    return suggestions
+
+
+# -- Format Adaptation (CONT-06) --------------------------------------------
+
+
+def get_format_weights(
+    db: Session, client_id: int, platform: str
+) -> dict[str, float]:
+    """Compute performance-weighted format preferences for a client/platform.
+
+    Formats with above-average engagement get higher weight.
+    Formats with below-average get lower weight (but never zero).
+    New/untested formats get an exploration weight of 0.15.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        platform: Platform name ("facebook" or "instagram").
+
+    Returns:
+        Dict mapping content_format -> weight (0.0 to 1.0, summing to ~1.0).
+    """
+    # All known content formats
+    all_formats = [
+        "question", "story", "how-to", "listicle",
+        "behind-scenes", "educational", "promotional", "testimonial",
+    ]
+
+    records = (
+        db.query(FormatPerformance)
+        .filter(
+            FormatPerformance.client_id == client_id,
+            FormatPerformance.platform == platform,
+        )
+        .all()
+    )
+
+    if not records:
+        # New client: equal weights
+        weight = 1.0 / len(all_formats)
+        return {fmt: round(weight, 4) for fmt in all_formats}
+
+    # Compute average engagement across all formats
+    engagement_map: dict[str, float] = {}
+    for rec in records:
+        engagement_map[rec.content_format] = rec.avg_engagement_rate or 0.0
+
+    avg_engagement = (
+        sum(engagement_map.values()) / len(engagement_map)
+        if engagement_map
+        else 0.0
+    )
+
+    # Assign weights
+    raw_weights: dict[str, float] = {}
+    exploration_weight = 0.15
+
+    for fmt in all_formats:
+        if fmt in engagement_map:
+            eng = engagement_map[fmt]
+            if avg_engagement > 0:
+                # Ratio-based weight: above-average gets more, below-average gets less
+                ratio = eng / avg_engagement
+                raw_weights[fmt] = max(0.1, min(2.0, ratio))
+            else:
+                raw_weights[fmt] = 1.0
+        else:
+            # Untested format: exploration weight
+            raw_weights[fmt] = exploration_weight
+
+    # Normalize to sum to ~1.0
+    total = sum(raw_weights.values())
+    if total > 0:
+        return {fmt: round(w / total, 4) for fmt, w in raw_weights.items()}
+
+    weight = 1.0 / len(all_formats)
+    return {fmt: round(weight, 4) for fmt in all_formats}
+
+
+def update_format_performance(
+    db: Session,
+    client_id: int,
+    platform: str,
+    content_format: str,
+    engagement_rate: float,
+    save_rate: float | None = None,
+    ctr: float | None = None,
+) -> FormatPerformance:
+    """Upsert format performance record with rolling averages.
+
+    Uses exponential moving average with alpha=0.3 to weight recent data more.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        platform: Platform name.
+        content_format: Content format name.
+        engagement_rate: New engagement rate observation.
+        save_rate: Optional save rate observation.
+        ctr: Optional click-through rate observation.
+
+    Returns:
+        Updated FormatPerformance record.
+    """
+    alpha = 0.3  # EMA weight for recent data
+
+    record = (
+        db.query(FormatPerformance)
+        .filter(
+            FormatPerformance.client_id == client_id,
+            FormatPerformance.platform == platform,
+            FormatPerformance.content_format == content_format,
+        )
+        .first()
+    )
+
+    if record is None:
+        # Create new record
+        record = FormatPerformance(
+            client_id=client_id,
+            platform=platform,
+            content_format=content_format,
+            sample_count=1,
+            avg_engagement_rate=engagement_rate,
+            avg_save_rate=save_rate,
+            avg_ctr=ctr,
+        )
+        db.add(record)
+    else:
+        # Update with EMA
+        record.sample_count += 1
+        record.avg_engagement_rate = (
+            alpha * engagement_rate
+            + (1 - alpha) * (record.avg_engagement_rate or 0.0)
+        )
+        if save_rate is not None:
+            record.avg_save_rate = (
+                alpha * save_rate
+                + (1 - alpha) * (record.avg_save_rate or 0.0)
+            )
+        if ctr is not None:
+            record.avg_ctr = (
+                alpha * ctr + (1 - alpha) * (record.avg_ctr or 0.0)
+            )
+        record.last_updated_at = datetime.now(timezone.utc)
+
+    db.flush()
+    return record
+
+
+def explain_format_adaptations(
+    db: Session, client_id: int
+) -> list[str]:
+    """Generate natural language explanations for format weight shifts.
+
+    Compares current format weights against equal distribution and
+    describes significant shifts.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+
+    Returns:
+        List of human-readable explanation strings.
+    """
+    explanations = []
+    equal_weight = 1.0 / 8  # 8 known formats
+
+    for platform in ["facebook", "instagram"]:
+        weights = get_format_weights(db, client_id, platform)
+
+        for fmt, weight in weights.items():
+            # Significant shift: more than 50% above or below equal
+            if weight > equal_weight * 1.5:
+                ratio = weight / equal_weight
+                explanations.append(
+                    f"Generating more {fmt} posts on {platform} because "
+                    f"they've performed {ratio:.1f}x better for this client"
+                )
+            elif weight < equal_weight * 0.5 and weight > 0:
+                explanations.append(
+                    f"Reducing {fmt} posts on {platform} due to "
+                    f"below-average engagement for this client"
+                )
+
+    return explanations
+
+
+def analyze_rejection_patterns(
+    db: Session, client_id: int
+) -> dict:
+    """Analyze operator rejection patterns by content pillar and format.
+
+    Flags categories with >80% rejection rate.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+
+    Returns:
+        Dict with flagged categories and suggested adjustments.
+    """
+    drafts = (
+        db.query(ContentDraft)
+        .filter(
+            ContentDraft.client_id == client_id,
+            ContentDraft.status.in_(["approved", "rejected"]),
+        )
+        .all()
+    )
+
+    if not drafts:
+        return {}
+
+    # Group by pillar_format combination
+    category_stats: dict[str, dict] = {}
+    for draft in drafts:
+        pillar = draft.content_pillar or "unspecified"
+        fmt = draft.content_format or "unspecified"
+        key = f"{pillar}_{fmt}"
+
+        if key not in category_stats:
+            category_stats[key] = {"total": 0, "rejected": 0}
+
+        category_stats[key]["total"] += 1
+        if draft.status == "rejected":
+            category_stats[key]["rejected"] += 1
+
+    # Flag categories with >80% rejection
+    flagged = {}
+    for category, stats in category_stats.items():
+        if stats["total"] >= 3:  # Need minimum sample size
+            rejection_rate = stats["rejected"] / stats["total"]
+            if rejection_rate > 0.80:
+                flagged[category] = {
+                    "rejection_rate": round(rejection_rate, 2),
+                    "total": stats["total"],
+                    "rejected": stats["rejected"],
+                    "suggestion": (
+                        f"Reduce {category} frequency or adjust tone. "
+                        f"{stats['rejected']}/{stats['total']} rejected."
+                    ),
+                }
+
+    return flagged
+
+
+def calibrate_ranking_from_choices(
+    db: Session, client_id: int
+) -> dict:
+    """Track which rank positions operators prefer.
+
+    If operator consistently picks #2 or #3 over #1, log as ranking
+    calibration signal.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+
+    Returns:
+        Dict with rank preference data and calibration signal.
+    """
+    approved = (
+        db.query(ContentDraft)
+        .filter(
+            ContentDraft.client_id == client_id,
+            ContentDraft.status == "approved",
+            ContentDraft.rank.isnot(None),
+        )
+        .all()
+    )
+
+    if not approved:
+        return {"total_approved": 0, "rank_distribution": {}, "signal": None}
+
+    rank_counts: dict[int, int] = Counter()
+    for draft in approved:
+        rank_counts[draft.rank] += 1
+
+    total = len(approved)
+    rank_distribution = {
+        rank: {"count": count, "pct": round(count / total, 2)}
+        for rank, count in sorted(rank_counts.items())
+    }
+
+    # Detect calibration signal: if #1 is NOT the most picked
+    signal = None
+    if total >= 5:  # Need minimum sample
+        rank_1_pct = rank_distribution.get(1, {}).get("pct", 0)
+        for rank, data in rank_distribution.items():
+            if rank != 1 and data["pct"] > rank_1_pct:
+                signal = (
+                    f"Operator prefers rank #{rank} ({data['pct']:.0%}) over "
+                    f"rank #1 ({rank_1_pct:.0%}). Ranking model may need adjustment."
+                )
+                break
+
+    return {
+        "total_approved": total,
+        "rank_distribution": rank_distribution,
+        "signal": signal,
+    }
+
+
+# -- Evergreen Bank Management -----------------------------------------------
+
+
+def manage_evergreen_bank(
+    db: Session, client_id: int
+) -> dict:
+    """Manage evergreen content bank: enforce cap and expiry.
+
+    - Cap: 20 entries per client (Claude's discretion from CONTEXT.md)
+    - Auto-expire: entries older than 90 days
+    - Returns summary of actions taken
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+
+    Returns:
+        Dict with bank status and actions taken.
+    """
+    now = datetime.now(timezone.utc)
+    expiry_cutoff = now - timedelta(days=90)
+
+    # Auto-expire entries older than 90 days
+    expired_entries = (
+        db.query(EvergreenEntry)
+        .filter(
+            EvergreenEntry.client_id == client_id,
+            EvergreenEntry.is_used == False,  # noqa: E712
+            EvergreenEntry.created_at < expiry_cutoff,
+        )
+        .all()
+    )
+    for entry in expired_entries:
+        entry.is_used = True  # Mark as used (expired)
+        entry.used_at = now
+
+    # Check cap: 20 entries
+    active_entries = (
+        db.query(EvergreenEntry)
+        .filter(
+            EvergreenEntry.client_id == client_id,
+            EvergreenEntry.is_used == False,  # noqa: E712
+        )
+        .order_by(EvergreenEntry.created_at.asc())
+        .all()
+    )
+
+    capped = []
+    if len(active_entries) > 20:
+        # Remove oldest unused entries above cap
+        excess = active_entries[: len(active_entries) - 20]
+        for entry in excess:
+            entry.is_used = True
+            entry.used_at = now
+            capped.append(entry.id)
+
+    db.flush()
+
+    return {
+        "client_id": client_id,
+        "expired_count": len(expired_entries),
+        "capped_count": len(capped),
+        "active_count": len(active_entries) - len(capped),
+    }
+
+
+def get_evergreen_options(
+    db: Session, client_id: int, limit: int = 5
+) -> list[EvergreenEntry]:
+    """Get unused evergreen entries within 90-day window.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        limit: Maximum entries to return.
+
+    Returns:
+        List of EvergreenEntry objects (freshest first).
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(days=90)
+
+    return (
+        db.query(EvergreenEntry)
+        .filter(
+            EvergreenEntry.client_id == client_id,
+            EvergreenEntry.is_used == False,  # noqa: E712
+            EvergreenEntry.created_at >= cutoff,
+        )
+        .order_by(EvergreenEntry.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+def mark_evergreen_used(
+    db: Session, evergreen_id: int
+) -> EvergreenEntry:
+    """Mark an evergreen entry as used.
+
+    Args:
+        db: SQLAlchemy session.
+        evergreen_id: EvergreenEntry ID.
+
+    Returns:
+        Updated EvergreenEntry.
+
+    Raises:
+        ContentGenerationError: If entry not found.
+    """
+    entry = (
+        db.query(EvergreenEntry)
+        .filter(EvergreenEntry.id == evergreen_id)
+        .first()
+    )
+    if entry is None:
+        raise ContentGenerationError(
+            message="Evergreen entry not found",
+            detail=f"evergreen_id={evergreen_id}",
+            reason="not_found",
+        )
+
+    entry.is_used = True
+    entry.used_at = datetime.now(timezone.utc)
+    db.flush()
+    return entry
 
 
 # -- Helpers -----------------------------------------------------------------

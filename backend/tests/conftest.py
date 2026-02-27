@@ -29,6 +29,8 @@ from sophia.research.models import (  # noqa: F401 -- ensure models registered
     ResearchFinding,
 )
 from sophia.content.models import (  # noqa: F401 -- ensure models registered
+    CalibrationRound,
+    CalibrationSession,
     ContentDraft,
     EvergreenEntry,
     FormatPerformance,
