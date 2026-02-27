@@ -338,6 +338,97 @@ class TestLogAlgorithmEvent:
         assert record.client_id == sample_client.id
 
 
+class TestLogAlgorithmEventPlaybookWiring:
+    """Tests for log_algorithm_event calling merge_algorithm_shift_into_playbook."""
+
+    def test_calls_merge_algorithm_shift_into_playbook(self, db_session, sample_client):
+        """log_algorithm_event calls merge_algorithm_shift_into_playbook after logging."""
+        shift_data = {
+            "detected": True,
+            "direction": "decline",
+            "magnitude_pct": -0.25,
+            "affected_client_count": 4,
+            "total_clients": 5,
+            "confidence": "high",
+        }
+        shift_nature = {
+            "platform": "instagram",
+            "shift_type": "engagement",
+            "industry_corroboration": True,
+            "corroborating_sources": ["Social Media Today"],
+            "confidence": "high",
+        }
+        adaptation = {
+            "platform": "instagram",
+            "hypothesis": "Test hypothesis",
+            "shift_percentage": 25,
+        }
+
+        with (
+            patch("sophia.semantic.sync.sync_to_lance"),
+            patch(
+                "sophia.research.playbook.merge_algorithm_shift_into_playbook",
+                return_value=[],
+            ) as mock_merge,
+        ):
+            records = log_algorithm_event(
+                db_session,
+                "instagram",
+                shift_data,
+                shift_nature,
+                adaptation,
+                client_ids=[sample_client.id],
+            )
+
+        assert len(records) >= 1
+        mock_merge.assert_called_once_with(
+            db_session, "instagram", shift_data, adaptation
+        )
+
+    def test_playbook_failure_does_not_prevent_logging(self, db_session, sample_client):
+        """If merge_algorithm_shift_into_playbook raises, records are still returned."""
+        shift_data = {
+            "detected": True,
+            "direction": "decline",
+            "magnitude_pct": -0.25,
+            "affected_client_count": 4,
+            "total_clients": 5,
+            "confidence": "high",
+        }
+        shift_nature = {
+            "platform": "instagram",
+            "shift_type": "engagement",
+            "industry_corroboration": False,
+            "corroborating_sources": [],
+            "confidence": "medium",
+        }
+        adaptation = {
+            "platform": "instagram",
+            "hypothesis": "Test hypothesis",
+            "shift_percentage": 20,
+        }
+
+        with (
+            patch("sophia.semantic.sync.sync_to_lance"),
+            patch(
+                "sophia.research.playbook.merge_algorithm_shift_into_playbook",
+                side_effect=RuntimeError("Playbook merge failed"),
+            ),
+        ):
+            records = log_algorithm_event(
+                db_session,
+                "instagram",
+                shift_data,
+                shift_nature,
+                adaptation,
+                client_ids=[sample_client.id],
+            )
+
+        # Records should still be returned despite playbook failure
+        assert len(records) >= 1
+        assert records[0].category == "required_to_play"
+
+
 class TestUpdatePlaybook:
     """Tests for update_playbook creating and deactivating insights."""
 

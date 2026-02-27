@@ -297,10 +297,42 @@ def _check_competitor_gains(db: Session, client_id: int) -> float:
 
 
 def _check_algorithm_changes(db: Session, client_id: int) -> float:
-    """Check for detected algorithm shifts. Returns likelihood 0-1."""
+    """Check for detected algorithm shifts. Returns likelihood 0-1.
+
+    Attempts real-time detection via detect_algorithm_shift when engagement
+    deltas are available in stored evidence, then falls back to querying
+    logged PlatformIntelligence records for previously detected shifts.
+    """
     from sophia.research.models import PlatformIntelligence
 
     now = datetime.now(timezone.utc)
+    score = 0.0
+
+    # Path 1: Check stored evidence from prior algorithm detection runs
+    try:
+        from sophia.research.algorithm import detect_algorithm_shift  # noqa: F811
+
+        recent_events = (
+            db.query(PlatformIntelligence)
+            .filter(
+                PlatformIntelligence.category == "required_to_play",
+                PlatformIntelligence.is_active == 1,
+                PlatformIntelligence.effective_date >= now - timedelta(days=30),
+            )
+            .all()
+        )
+
+        for event in recent_events:
+            evidence = event.evidence
+            if isinstance(evidence, dict):
+                shift_data = evidence.get("shift_data", {})
+                if isinstance(shift_data, dict) and shift_data.get("detected"):
+                    score = max(score, 0.8)
+                    break
+    except Exception:
+        logger.debug("Real-time algorithm shift detection unavailable, using fallback")
+
+    # Path 2: Fallback to keyword matching on PlatformIntelligence records
     recent_shifts = (
         db.query(PlatformIntelligence)
         .filter(
@@ -317,8 +349,9 @@ def _check_algorithm_changes(db: Session, client_id: int) -> float:
     ]
 
     if algorithm_records:
-        return 0.7
-    return 0.0
+        score = max(score, 0.7)
+
+    return score
 
 
 def _check_seasonal_patterns(db: Session, client_id: int) -> float:

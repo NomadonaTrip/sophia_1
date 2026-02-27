@@ -383,4 +383,15 @@ def log_algorithm_event(
                 record.id,
             )
 
+    # Propagate algorithm shift to platform playbook for all affected clients
+    try:
+        from sophia.research.playbook import merge_algorithm_shift_into_playbook
+
+        merge_algorithm_shift_into_playbook(db, platform, shift_data, adaptation)
+    except Exception:
+        logger.exception(
+            "Failed to merge algorithm shift into playbook for platform=%s",
+            platform,
+        )
+
     return records

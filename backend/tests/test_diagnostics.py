@@ -188,6 +188,67 @@ class TestGenerateDiagnosticReport:
         assert "generated_at" in report
 
 
+class TestCheckAlgorithmChangesWiring:
+    """Tests for _check_algorithm_changes wiring to algorithm.py."""
+
+    def test_evidence_based_detection_returns_0_8(self, db_session, sample_client):
+        """Returns 0.8 when PlatformIntelligence evidence has shift_data.detected=True."""
+        from sophia.research.diagnostics import _check_algorithm_changes
+
+        now = datetime.now(timezone.utc)
+        record = PlatformIntelligence(
+            client_id=sample_client.id,
+            platform="instagram",
+            category="required_to_play",
+            insight="Algorithm shift detected: decline of 25.0%",
+            evidence={
+                "shift_data": {
+                    "detected": True,
+                    "direction": "decline",
+                    "magnitude_pct": -0.25,
+                },
+                "shift_nature": {"shift_type": "engagement"},
+            },
+            effective_date=now - timedelta(days=2),
+            is_active=1,
+        )
+        db_session.add(record)
+        db_session.commit()
+
+        score = _check_algorithm_changes(db_session, sample_client.id)
+
+        assert score == 0.8
+
+    def test_fallback_keyword_returns_0_7(self, db_session, sample_client):
+        """Returns 0.7 when no evidence with shift_data but keyword match exists."""
+        from sophia.research.diagnostics import _check_algorithm_changes
+
+        now = datetime.now(timezone.utc)
+        record = PlatformIntelligence(
+            client_id=sample_client.id,
+            platform="instagram",
+            category="required_to_play",
+            insight="Algorithm shift detected on platform",
+            evidence={"some_other_data": True},
+            effective_date=now - timedelta(days=2),
+            is_active=1,
+        )
+        db_session.add(record)
+        db_session.commit()
+
+        score = _check_algorithm_changes(db_session, sample_client.id)
+
+        assert score == 0.7
+
+    def test_no_records_returns_0(self, db_session, sample_client):
+        """Returns 0.0 when no relevant PlatformIntelligence records exist."""
+        from sophia.research.diagnostics import _check_algorithm_changes
+
+        score = _check_algorithm_changes(db_session, sample_client.id)
+
+        assert score == 0.0
+
+
 class TestProposeExperiments:
     """Tests for propose_experiments generating structured proposals."""
 
