@@ -9,6 +9,8 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 
 import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 from sophia.content.ai_label import (
     AI_LABEL_RULES,
@@ -17,20 +19,27 @@ from sophia.content.ai_label import (
     should_apply_ai_label,
 )
 from sophia.content.models import (
+    CalibrationRound,
+    CalibrationSession,
     ContentDraft,
     EvergreenEntry,
     FormatPerformance,
     RegenerationLog,
 )
+from sophia.content.router import content_router, _get_db
 from sophia.content.service import (
     _analyze_guidance_patterns,
     analyze_rejection_patterns,
     calibrate_ranking_from_choices,
+    create_calibration_session,
     explain_format_adaptations,
+    finalize_calibration,
+    generate_calibration_round,
     get_evergreen_options,
     get_format_weights,
     manage_evergreen_bank,
     mark_evergreen_used,
+    record_calibration_choice,
     regenerate_draft,
     suggest_voice_profile_updates,
     update_format_performance,
@@ -558,3 +567,288 @@ class TestMarkEvergreenUsed:
 
         assert result.is_used is True
         assert result.used_at is not None
+
+
+# =============================================================================
+# Voice Calibration Tests (CONT-09)
+# =============================================================================
+
+
+class TestCreateCalibrationSession:
+    """Tests for calibration session creation."""
+
+    def test_creates_session(self, db_session, sample_client):
+        """Session created with correct total_rounds and status."""
+        session = create_calibration_session(db_session, sample_client.id, total_rounds=8)
+
+        assert session.id is not None
+        assert session.client_id == sample_client.id
+        assert session.total_rounds == 8
+        assert session.rounds_completed == 0
+        assert session.status == "in_progress"
+
+    def test_clamps_rounds_to_range(self, db_session, sample_client):
+        """total_rounds is clamped to 5-10 range."""
+        session = create_calibration_session(db_session, sample_client.id, total_rounds=3)
+        assert session.total_rounds == 5
+
+        session2 = create_calibration_session(db_session, sample_client.id, total_rounds=15)
+        assert session2.total_rounds == 10
+
+
+class TestGenerateCalibrationRound:
+    """Tests for A/B comparison round generation."""
+
+    def test_generates_two_options(self, db_session, sample_client):
+        """Round should have two different text options."""
+        session = create_calibration_session(db_session, sample_client.id)
+        cal_round = generate_calibration_round(db_session, session.id)
+
+        assert cal_round.id is not None
+        assert cal_round.round_number == 1
+        assert cal_round.option_a != cal_round.option_b
+        assert len(cal_round.option_a) > 0
+        assert len(cal_round.option_b) > 0
+
+
+class TestRecordCalibrationChoice:
+    """Tests for recording operator choices."""
+
+    def test_records_choice_a(self, db_session, sample_client):
+        """Selecting 'a' records voice_delta and increments rounds."""
+        session = create_calibration_session(db_session, sample_client.id, total_rounds=5)
+        cal_round = generate_calibration_round(db_session, session.id)
+
+        result = record_calibration_choice(db_session, cal_round.id, "a")
+
+        assert result.selected == "a"
+        assert result.voice_delta is not None
+        assert "brevity_preference" in result.voice_delta
+
+        # Session progress incremented
+        db_session.refresh(session)
+        assert session.rounds_completed == 1
+
+    def test_final_round_completes_session(self, db_session, sample_client):
+        """Completing all rounds sets session status to 'completed'."""
+        session = create_calibration_session(db_session, sample_client.id, total_rounds=5)
+
+        for i in range(5):
+            cal_round = generate_calibration_round(db_session, session.id)
+            record_calibration_choice(db_session, cal_round.id, "a" if i % 2 == 0 else "b")
+
+        db_session.refresh(session)
+        assert session.status == "completed"
+        assert session.rounds_completed == 5
+
+
+class TestFinalizeCalibration:
+    """Tests for calibration finalization."""
+
+    def test_aggregates_deltas(self, db_session, sample_client):
+        """Finalization aggregates voice deltas and produces summary."""
+        session = create_calibration_session(db_session, sample_client.id, total_rounds=5)
+
+        # Complete all rounds (all pick 'a' -- prefer brevity)
+        for _ in range(5):
+            cal_round = generate_calibration_round(db_session, session.id)
+            record_calibration_choice(db_session, cal_round.id, "a")
+
+        result = finalize_calibration(db_session, session.id)
+
+        assert result["session_id"] == session.id
+        assert result["rounds_completed"] == 5
+        assert result["adjustments"]["brevity_preference"] > 0
+        assert "shorter" in result["summary"].lower() or "punchi" in result["summary"].lower()
+
+    def test_per_client_only(self, db_session, sample_client, sample_client_2):
+        """Calibration sessions are per-client only."""
+        session1 = create_calibration_session(db_session, sample_client.id)
+        session2 = create_calibration_session(db_session, sample_client_2.id)
+
+        assert session1.client_id == sample_client.id
+        assert session2.client_id == sample_client_2.id
+        assert session1.id != session2.id
+
+
+# =============================================================================
+# Router Tests (using TestClient)
+# =============================================================================
+
+
+@pytest.fixture
+def test_app(db_session):
+    """Create a FastAPI test app with DB dependency override."""
+    app = FastAPI()
+    app.include_router(content_router)
+
+    def override_get_db():
+        return db_session
+
+    app.dependency_overrides[_get_db] = override_get_db
+    return app
+
+
+@pytest.fixture
+def client(test_app):
+    """Create a TestClient for the content router."""
+    return TestClient(test_app)
+
+
+class TestRouterDraftEndpoints:
+    """Tests for content draft API endpoints."""
+
+    def test_list_drafts(self, client, db_session, sample_client):
+        """GET /api/content/drafts returns list."""
+        _make_draft(db_session, sample_client.id, copy="Test draft 1")
+        _make_draft(db_session, sample_client.id, copy="Test draft 2")
+
+        response = client.get(f"/api/content/drafts?client_id={sample_client.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+
+    def test_get_latest_batch(self, client, db_session, sample_client):
+        """GET /api/content/batch/{id}/latest returns ranked batch."""
+        _make_draft(db_session, sample_client.id, copy="Draft 1", rank=2)
+        _make_draft(db_session, sample_client.id, copy="Draft 2", rank=1)
+
+        response = client.get(f"/api/content/batch/{sample_client.id}/latest")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        # Should be sorted by rank
+        assert data[0]["rank"] == 1
+
+
+class TestRouterRegenerationEndpoints:
+    """Tests for regeneration API endpoints."""
+
+    @patch("sophia.content.service._validate_voice_profile")
+    @patch("sophia.content.service._validate_intelligence")
+    @patch("sophia.content.service._validate_research")
+    @patch("sophia.content.service.run_quality_gates")
+    def test_regenerate_endpoint(
+        self, mock_gates, mock_research, mock_intel, mock_voice,
+        client, db_session, sample_client
+    ):
+        """POST /api/content/drafts/{id}/regenerate returns updated draft."""
+        draft = _make_draft(db_session, sample_client.id)
+        mock_research.return_value = [{"topic": "Test"}]
+        mock_intel.return_value = MagicMock()
+        mock_voice.return_value = {"base_voice": {}}
+
+        from sophia.content.quality_gates import QualityReport
+        mock_gates.return_value = QualityReport(
+            status="passed", results=[], summary_badge="Passed"
+        )
+
+        response = client.post(
+            f"/api/content/drafts/{draft.id}/regenerate",
+            json={"guidance": "Make it punchier"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["regeneration_count"] == 1
+
+    def test_regenerate_at_limit_returns_409(self, client, db_session, sample_client):
+        """POST /api/content/drafts/{id}/regenerate at limit returns 409."""
+        draft = _make_draft(
+            db_session, sample_client.id, regeneration_count=3
+        )
+
+        response = client.post(
+            f"/api/content/drafts/{draft.id}/regenerate",
+            json={"guidance": "More casual"},
+        )
+
+        assert response.status_code == 409
+
+
+class TestRouterCalibrationEndpoints:
+    """Tests for voice calibration API endpoints."""
+
+    def test_start_calibration(self, client, db_session, sample_client):
+        """POST /api/content/calibration/{id}/start creates session."""
+        response = client.post(
+            f"/api/content/calibration/{sample_client.id}/start",
+            json={"total_rounds": 8},
+        )
+
+        assert response.status_code == 201
+        data = response.json()
+        assert data["total_rounds"] == 8
+        assert data["status"] == "in_progress"
+
+    def test_generate_round(self, client, db_session, sample_client):
+        """POST /api/content/calibration/{id}/round returns A/B options."""
+        session = create_calibration_session(db_session, sample_client.id)
+        db_session.flush()
+
+        response = client.post(f"/api/content/calibration/{session.id}/round")
+
+        assert response.status_code == 201
+        data = response.json()
+        assert "option_a" in data
+        assert "option_b" in data
+
+    def test_choose_round(self, client, db_session, sample_client):
+        """POST .../round/{id}/choose records choice."""
+        session = create_calibration_session(db_session, sample_client.id)
+        cal_round = generate_calibration_round(db_session, session.id)
+
+        response = client.post(
+            f"/api/content/calibration/{session.id}/round/{cal_round.id}/choose",
+            json={"selected": "a"},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["selected"] == "a"
+        assert data["voice_delta"] is not None
+
+
+class TestRouterFormatEndpoints:
+    """Tests for format adaptation API endpoints."""
+
+    def test_get_format_weights(self, client, db_session, sample_client):
+        """GET /api/content/formats/{id} returns weights."""
+        response = client.get(
+            f"/api/content/formats/{sample_client.id}?platform=instagram"
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "weights" in data
+        assert data["platform"] == "instagram"
+
+
+class TestRouterEvergreenEndpoints:
+    """Tests for evergreen bank API endpoints."""
+
+    def test_list_evergreen(self, client, db_session, sample_client):
+        """GET /api/content/evergreen/{id} returns unused entries."""
+        draft = _make_draft(db_session, sample_client.id)
+        _make_evergreen(db_session, sample_client.id, draft.id)
+
+        response = client.get(f"/api/content/evergreen/{sample_client.id}")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 1
+
+
+class TestRouterAiLabelEndpoints:
+    """Tests for AI label API endpoints."""
+
+    def test_get_ai_label_rules(self, client):
+        """GET /api/content/ai-labels/rules returns platform rules."""
+        response = client.get("/api/content/ai-labels/rules")
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "facebook" in data
+        assert "instagram" in data

@@ -26,6 +26,8 @@ from typing import Any, Optional
 from sqlalchemy.orm import Session
 
 from sophia.content.models import (
+    CalibrationRound,
+    CalibrationSession,
     ContentDraft,
     EvergreenEntry,
     FormatPerformance,
@@ -1277,6 +1279,267 @@ def mark_evergreen_used(
     entry.used_at = datetime.now(timezone.utc)
     db.flush()
     return entry
+
+
+# -- Voice Calibration Sessions (CONT-09) ------------------------------------
+
+
+def create_calibration_session(
+    db: Session, client_id: int, total_rounds: int = 10
+) -> CalibrationSession:
+    """Create a new voice calibration session for a client.
+
+    Per-client only (locked decision: no cross-client mixing).
+    total_rounds defaults to 10 but configurable within 5-10 range.
+
+    Args:
+        db: SQLAlchemy session.
+        client_id: Client ID.
+        total_rounds: Number of A/B comparison rounds (5-10).
+
+    Returns:
+        Created CalibrationSession.
+    """
+    total_rounds = max(5, min(10, total_rounds))
+
+    session = CalibrationSession(
+        client_id=client_id,
+        total_rounds=total_rounds,
+        rounds_completed=0,
+        status="in_progress",
+    )
+    db.add(session)
+    db.flush()
+    return session
+
+
+def generate_calibration_round(
+    db: Session, session_id: int
+) -> CalibrationRound:
+    """Generate the next A/B comparison round for a calibration session.
+
+    Creates two versions of the same content idea with different stylistic
+    interpretations for the operator to compare.
+
+    Args:
+        db: SQLAlchemy session.
+        session_id: CalibrationSession ID.
+
+    Returns:
+        CalibrationRound with option_a and option_b text.
+
+    Raises:
+        ContentGenerationError: If session not found or not in progress.
+    """
+    session = (
+        db.query(CalibrationSession)
+        .filter(CalibrationSession.id == session_id)
+        .first()
+    )
+    if session is None:
+        raise ContentGenerationError(
+            message="Calibration session not found",
+            detail=f"session_id={session_id}",
+            reason="not_found",
+        )
+    if session.status != "in_progress":
+        raise ContentGenerationError(
+            message="Calibration session is not in progress",
+            detail=f"session_id={session_id}, status={session.status}",
+            reason="invalid_state",
+        )
+
+    round_number = session.rounds_completed + 1
+
+    # In production: load client voice profile and intelligence, then
+    # generate two stylistically different versions via Claude Code.
+    # For orchestration, we produce structured placeholder pairs that
+    # demonstrate the A/B comparison pattern.
+    option_a = (
+        f"[Version A - Round {round_number}] "
+        "Here's a concise, punchy take on the topic. "
+        "Short sentences. Direct language. Gets to the point fast."
+    )
+    option_b = (
+        f"[Version B - Round {round_number}] "
+        "Let me share a more detailed perspective on this topic. "
+        "We've been thinking about how this connects to our community's needs, "
+        "and here's what we've found works well."
+    )
+
+    cal_round = CalibrationRound(
+        session_id=session_id,
+        round_number=round_number,
+        option_a=option_a,
+        option_b=option_b,
+    )
+    db.add(cal_round)
+    db.flush()
+    return cal_round
+
+
+def record_calibration_choice(
+    db: Session, round_id: int, selected: str
+) -> CalibrationRound:
+    """Record operator's choice in a calibration round.
+
+    Computes voice_delta: what the selection reveals about voice preferences.
+
+    Args:
+        db: SQLAlchemy session.
+        round_id: CalibrationRound ID.
+        selected: "a" or "b".
+
+    Returns:
+        Updated CalibrationRound with voice_delta.
+
+    Raises:
+        ContentGenerationError: If round not found or invalid selection.
+    """
+    if selected not in ("a", "b"):
+        raise ContentGenerationError(
+            message="Invalid selection: must be 'a' or 'b'",
+            detail=f"selected={selected}",
+            reason="invalid_input",
+        )
+
+    cal_round = (
+        db.query(CalibrationRound)
+        .filter(CalibrationRound.id == round_id)
+        .first()
+    )
+    if cal_round is None:
+        raise ContentGenerationError(
+            message="Calibration round not found",
+            detail=f"round_id={round_id}",
+            reason="not_found",
+        )
+
+    cal_round.selected = selected
+
+    # Compute voice_delta based on the selection
+    # In production: analyze stylometric differences between A and B,
+    # record which direction the operator preferred.
+    # For orchestration: A is shorter/punchier, B is longer/detailed.
+    if selected == "a":
+        voice_delta = {
+            "brevity_preference": 0.1,
+            "formality_preference": -0.05,
+            "directness_preference": 0.1,
+        }
+    else:
+        voice_delta = {
+            "brevity_preference": -0.1,
+            "formality_preference": 0.05,
+            "directness_preference": -0.1,
+        }
+
+    cal_round.voice_delta = voice_delta
+
+    # Update session progress
+    session = (
+        db.query(CalibrationSession)
+        .filter(CalibrationSession.id == cal_round.session_id)
+        .first()
+    )
+    if session:
+        session.rounds_completed += 1
+        if session.rounds_completed >= session.total_rounds:
+            session.status = "completed"
+
+    db.flush()
+    return cal_round
+
+
+def finalize_calibration(
+    db: Session, session_id: int
+) -> dict:
+    """Finalize calibration and apply voice profile updates.
+
+    Aggregates all voice_deltas from completed rounds and computes
+    net voice preference adjustments. Soft update: adjusts preferences,
+    doesn't overwrite the profile entirely.
+
+    Args:
+        db: SQLAlchemy session.
+        session_id: CalibrationSession ID.
+
+    Returns:
+        Dict with aggregated adjustments and update summary.
+
+    Raises:
+        ContentGenerationError: If session not found or not completed.
+    """
+    session = (
+        db.query(CalibrationSession)
+        .filter(CalibrationSession.id == session_id)
+        .first()
+    )
+    if session is None:
+        raise ContentGenerationError(
+            message="Calibration session not found",
+            detail=f"session_id={session_id}",
+            reason="not_found",
+        )
+    if session.status != "completed":
+        raise ContentGenerationError(
+            message="Calibration session not yet completed",
+            detail=f"session_id={session_id}, rounds={session.rounds_completed}/{session.total_rounds}",
+            reason="invalid_state",
+        )
+
+    # Aggregate voice deltas from all rounds
+    rounds = (
+        db.query(CalibrationRound)
+        .filter(
+            CalibrationRound.session_id == session_id,
+            CalibrationRound.voice_delta.isnot(None),
+        )
+        .all()
+    )
+
+    aggregated: dict[str, float] = {}
+    for cal_round in rounds:
+        delta = cal_round.voice_delta or {}
+        for key, value in delta.items():
+            aggregated[key] = aggregated.get(key, 0.0) + value
+
+    # Normalize by number of rounds
+    num_rounds = len(rounds)
+    if num_rounds > 0:
+        for key in aggregated:
+            aggregated[key] = round(aggregated[key] / num_rounds, 3)
+
+    # Store aggregated deltas on session
+    session.voice_deltas = [aggregated]
+
+    # In production: apply soft update to VoiceProfile
+    # For orchestration, return the adjustments for the caller to apply
+    summary_parts = []
+    if aggregated.get("brevity_preference", 0) > 0:
+        summary_parts.append("Prefers shorter, punchier content")
+    elif aggregated.get("brevity_preference", 0) < 0:
+        summary_parts.append("Prefers longer, more detailed content")
+
+    if aggregated.get("formality_preference", 0) > 0:
+        summary_parts.append("Leans more formal")
+    elif aggregated.get("formality_preference", 0) < 0:
+        summary_parts.append("Leans more casual")
+
+    if aggregated.get("directness_preference", 0) > 0:
+        summary_parts.append("Prefers direct communication")
+    elif aggregated.get("directness_preference", 0) < 0:
+        summary_parts.append("Prefers conversational, indirect style")
+
+    db.flush()
+
+    return {
+        "session_id": session_id,
+        "client_id": session.client_id,
+        "rounds_completed": num_rounds,
+        "adjustments": aggregated,
+        "summary": "; ".join(summary_parts) if summary_parts else "No strong preferences detected",
+    }
 
 
 # -- Helpers -----------------------------------------------------------------
