@@ -1,0 +1,86 @@
+@import "./tokens.css";
+
+/* Base styles */
+body {
+  background-color: var(--color-midnight-900);
+  color: var(--color-text-primary);
+  font-family: var(--font-data);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Dark theme scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-midnight-900);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-midnight-600);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-midnight-600) var(--color-midnight-900);
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Sage skeleton pulse animation */
+@keyframes sage-pulse {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+.skeleton-sage {
+  animation: sage-pulse 1.5s ease-in-out infinite;
+  background-color: var(--color-sage-600);
+  border-radius: 4px;
+}
+
+/* Sage dot pulse for thinking indicator */
+@keyframes sage-dot-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(0.85);
+  }
+}
+
+.sage-dot-pulse {
+  animation: sage-dot-pulse 1.2s ease-in-out infinite;
+}
+
+/* Tabular numbers for stats */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
