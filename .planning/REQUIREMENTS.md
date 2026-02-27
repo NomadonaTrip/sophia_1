@@ -24,11 +24,11 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **RSRCH-02**: Sophia can scope research to each client's defined market scope (FR10)
 - [x] **RSRCH-03**: Sophia can monitor competitor social media and identify strategic opportunities or threats (FR11)
 - [x] **RSRCH-04**: Sophia can build progressive six-domain intelligence profiles per client with completeness tracking (FR12)
-- [ ] **RSRCH-05**: Sophia can detect platform algorithm changes by identifying uniform engagement shifts across portfolio (FR13)
-- [ ] **RSRCH-06**: Sophia can generate diagnostic reports when client metrics plateau (FR14)
+- [x] **RSRCH-05**: Sophia can detect platform algorithm changes by identifying uniform engagement shifts across portfolio (FR13)
+- [x] **RSRCH-06**: Sophia can generate diagnostic reports when client metrics plateau (FR14)
 - [x] **RSRCH-07**: Sophia can retain anonymized ICP intelligence as institutional knowledge across engagements (FR15)
-- [ ] **RSRCH-08**: Sophia can build platform-specific intelligence profiles categorized as "required to play" vs "sufficient to win" (FR62)
-- [ ] **RSRCH-09**: Sophia can analyze algorithm shifts and proactively adapt content strategies across affected clients (FR63)
+- [x] **RSRCH-08**: Sophia can build platform-specific intelligence profiles categorized as "required to play" vs "sufficient to win" (FR62)
+- [x] **RSRCH-09**: Sophia can analyze algorithm shifts and proactively adapt content strategies across affected clients (FR63)
 
 ### Content Generation & Voice
 
@@ -149,11 +149,11 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | RSRCH-02 | Phase 2 | Complete |
 | RSRCH-03 | Phase 2 | Complete |
 | RSRCH-04 | Phase 2 | Complete |
-| RSRCH-05 | Phase 2 | Pending |
-| RSRCH-06 | Phase 2 | Pending |
+| RSRCH-05 | Phase 2 | Complete |
+| RSRCH-06 | Phase 2 | Complete |
 | RSRCH-07 | Phase 2 | Complete |
-| RSRCH-08 | Phase 2 | Pending |
-| RSRCH-09 | Phase 2 | Pending |
+| RSRCH-08 | Phase 2 | Complete |
+| RSRCH-09 | Phase 2 | Complete |
 | CONT-01 | Phase 3 | Pending |
 | CONT-02 | Phase 3 | Pending |
 | CONT-03 | Phase 3 | Pending |
