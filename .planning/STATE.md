@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 01-03-PLAN.md (Phase 1 complete)
-last_updated: "2026-02-27T04:53:46.696Z"
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-02-27T06:35:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 12
-  completed_plans: 3
+  completed_plans: 4
 ---
 
 # Project State: Sophia
@@ -19,27 +19,27 @@ progress:
 See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Core value:** Every piece of content is informed, not invented -- grounded in current research, stored client intelligence, and the client's voice profile.
-**Current focus:** Phase 1 -- Client Foundation & Data Security
+**Current focus:** Phase 2 -- Research & Semantic Intelligence
 
 ## Current Phase
 
-**Phase 1: Client Foundation & Data Security**
-- Status: Complete
-- Current Plan: 3/3
-- Plans: 3/3 complete
+**Phase 2: Research & Semantic Intelligence**
+- Status: In Progress
+- Current Plan: 1/3
+- Plans: 1/3 complete
 
 ## Milestone Progress
 
 | Phase | Status | Plans | Progress |
 |-------|--------|-------|----------|
 | 1 | ● | 3/3 | 100% |
-| 2 | ○ | 0/3 | 0% |
+| 2 | ◐ | 1/3 | 33% |
 | 3 | ○ | 0/3 | 0% |
 | 4 | ○ | 0/3 | 0% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/3 | 0% |
 
-Progress: ██░░░░░░░░ 25%
+Progress: ███░░░░░░░ 33%
 
 ## Decision Log
 
@@ -58,6 +58,11 @@ Progress: ██░░░░░░░░ 25%
 | 2026-02-27 | Quantitative weight 0.3, qualitative weight 0.7 for confidence | Phase 01-03: qualitative dimensions matter more for voice matching than computed metrics |
 | 2026-02-27 | Graceful ClientService integration with ImportError fallback | Phase 01-03: enables out-of-order plan execution |
 | 2026-02-27 | textstat.words_per_sentence over deprecated avg_sentence_length | Phase 01-03: future-proof against textstat API changes |
+| 2026-02-27 | LanceDB 'is not None' checks instead of truthiness | Phase 02-01: LanceDB connection is falsy when empty |
+| 2026-02-27 | Separate IntelligenceInstitutionalKnowledge table | Phase 02-01: avoids migration on Phase 1 institutional_knowledge table |
+| 2026-02-27 | Dedup fallback to exact text match | Phase 02-01: ensures dedup works when LanceDB empty or model unavailable |
+| 2026-02-27 | Depth scoring: weighted count + source diversity + confidence | Phase 02-01: richness-based 1-5 rating with freshness decay at 30/90 days |
+| 2026-02-27 | FTS index deferred to first write | Phase 02-01: LanceDB Tantivy requires data before FTS index creation |
 
 ## Performance Metrics
 
@@ -66,12 +71,13 @@ Progress: ██░░░░░░░░ 25%
 | 01-01 | 5min | 3 | 20 |
 | 01-02 | 5min | 2 | 10 |
 | 01-03 | 7min | 2 | 3 |
+| 02-01 | 30min | 2 | 15 |
 
 ## Last Session
 
-**Stopped at:** Completed 01-03-PLAN.md (Phase 1 complete)
-**Resume with:** `/gsd:execute-phase 02` (phase 2)
-**Resume file:** Next phase
+**Stopped at:** Completed 02-01-PLAN.md
+**Resume with:** Next plan in phase 02
+**Resume file:** .planning/phases/02-research-semantic-intelligence/02-02-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 01-03-PLAN.md execution*
+*Last updated: 2026-02-27 after 02-01-PLAN.md execution*
