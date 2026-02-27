@@ -1,9 +1,9 @@
 .planning/
 _bmad/
 _bmad-output/
-_bmad-core/
+.bmad-core/
 .claude/
-playwright-mcp/
+.playwright-mcp/
 archives/
 docs/
 CLAUDE.md
