@@ -155,7 +155,7 @@ class VoiceService:
 
         # textstat-powered metrics
         flesch = textstat.flesch_reading_ease(text)
-        avg_sent_len = textstat.avg_sentence_length(text)
+        avg_sent_len = textstat.words_per_sentence(text)
         syll_per_word = textstat.avg_syllables_per_word(text)
         lexicon = textstat.lexicon_count(text)
         sent_count = textstat.sentence_count(text)
@@ -173,7 +173,7 @@ class VoiceService:
         exclamation_density = excl_count / sent_count if sent_count > 0 else 0.0
         question_density = quest_count / sent_count if sent_count > 0 else 0.0
 
-        emoji_count = len(_EMOJI_PATTERN.findall(text))
+        emoji_count = sum(len(m) for m in _EMOJI_PATTERN.findall(text))
         hashtag_count = len(_HASHTAG_PATTERN.findall(text))
 
         return {

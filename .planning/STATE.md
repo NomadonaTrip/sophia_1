@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in-progress
-stopped_at: Completed 01-01-PLAN.md
-last_updated: "2026-02-27T04:34:00Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-02-27T04:43:53Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 12
-  completed_plans: 1
+  completed_plans: 2
 ---
 
 # Project State: Sophia
@@ -25,21 +25,21 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 1: Client Foundation & Data Security**
 - Status: In progress
-- Current Plan: 2/3
-- Plans: 1/3 complete
+- Current Plan: 3/3
+- Plans: 2/3 complete
 
 ## Milestone Progress
 
 | Phase | Status | Plans | Progress |
 |-------|--------|-------|----------|
-| 1 | ◐ | 1/3 | 33% |
+| 1 | ◐ | 2/3 | 67% |
 | 2 | ○ | 0/3 | 0% |
 | 3 | ○ | 0/3 | 0% |
 | 4 | ○ | 0/3 | 0% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/3 | 0% |
 
-Progress: ░░░░░░░░░░ 8%
+Progress: █░░░░░░░░░ 17%
 
 ## Decision Log
 
@@ -51,18 +51,23 @@ Progress: ░░░░░░░░░░ 8%
 | 2026-02-27 | JSON columns for evolving structures | Phase 01-01: voice profiles, onboarding state, guardrails avoid migrations on dimension changes |
 | 2026-02-27 | No cross-client ORM relationships | Phase 01-01: enforces SAFE-01 data isolation at model level |
 | 2026-02-27 | NTFS path validator on Settings | Phase 01-01: prevents WAL corruption in WSL2 |
+| 2026-02-27 | Session-injected services (db: Session first arg) | Phase 01-02: testability via transaction rollback, explicit transaction control |
+| 2026-02-27 | Fuzzy duplicate detection at 90% WRatio threshold | Phase 01-02: catches typos without false positives on different names |
+| 2026-02-27 | Weighted profile completeness algorithm | Phase 01-02: reflects business value of each field (voice 15%, pillars 15%, etc.) |
+| 2026-02-27 | flag_modified() for JSON column mutations | Phase 01-02: ensures SQLAlchemy detects in-place dict/list changes |
 
 ## Performance Metrics
 
 | Phase-Plan | Duration | Tasks | Files |
 |------------|----------|-------|-------|
 | 01-01 | 5min | 3 | 20 |
+| 01-02 | 5min | 2 | 10 |
 
 ## Last Session
 
-**Stopped at:** Completed 01-01-PLAN.md
-**Resume with:** `/gsd:execute-phase 01` (plan 2 of 3)
-**Resume file:** .planning/phases/01-client-foundation-data-security/01-02-PLAN.md
+**Stopped at:** Completed 01-02-PLAN.md
+**Resume with:** `/gsd:execute-phase 01` (plan 3 of 3)
+**Resume file:** .planning/phases/01-client-foundation-data-security/01-03-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 01-01-PLAN.md execution*
+*Last updated: 2026-02-27 after 01-02-PLAN.md execution*
