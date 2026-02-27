@@ -7,6 +7,8 @@ import {
   SlidersHorizontal,
   BarChart3,
   LogOut,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -42,6 +44,7 @@ export function Layout() {
   const location = useLocation()
   const [isThinking, setIsThinking] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [panelCollapsed, setPanelCollapsed] = useState(false)
   const responseIndexRef = useRef(0)
 
   const currentPath =
@@ -123,27 +126,54 @@ export function Layout() {
         postsRemaining={8}
       />
 
-      {/* Main content: route content (top) + conversation (bottom, 30vh min) */}
+      {/* Main content: collapsible route content (top) + conversation (bottom) */}
       <main className="flex-1 flex flex-col pb-16 overflow-hidden">
-        {/* Route content — takes remaining space above conversation */}
-        <ScrollArea className="flex-1 min-h-0">
-          <div className="mx-auto max-w-[720px] px-4 py-4">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={currentPath}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.15 }}
-              >
-                <Outlet />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </ScrollArea>
+        {/* Route content panel — collapsible */}
+        {!panelCollapsed && (
+          <ScrollArea className="flex-1 min-h-0">
+            <div className="mx-auto max-w-[720px] px-4 py-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentPath}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <Outlet />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </ScrollArea>
+        )}
 
-        {/* Conversation area — fixed 30% of viewport, always visible */}
-        <div className="h-[30vh] min-h-[30vh] border-t border-midnight-700 overflow-y-auto">
+        {/* Collapse/expand toggle bar */}
+        <button
+          type="button"
+          onClick={() => setPanelCollapsed((p) => !p)}
+          className="flex items-center justify-center gap-1.5 py-1 border-t border-midnight-700 bg-midnight-800/60 hover:bg-midnight-700/60 text-text-muted hover:text-text-secondary transition-colors cursor-pointer flex-none"
+          aria-label={panelCollapsed ? 'Show cards' : 'Hide cards'}
+        >
+          {panelCollapsed ? (
+            <>
+              <ChevronDown className="h-3.5 w-3.5" />
+              <span className="text-[11px]">Show {NAV_TABS.find((t) => t.path === currentPath)?.label ?? 'cards'}</span>
+            </>
+          ) : (
+            <>
+              <ChevronUp className="h-3.5 w-3.5" />
+              <span className="text-[11px]">Focus chat</span>
+            </>
+          )}
+        </button>
+
+        {/* Conversation area — expands when panel collapsed, 30vh min otherwise */}
+        <div
+          className={cn(
+            'border-t border-midnight-700 overflow-y-auto',
+            panelCollapsed ? 'flex-1' : 'h-[30vh] min-h-[30vh]',
+          )}
+        >
           <div className="mx-auto max-w-[720px] px-4">
             <ChatMessageArea messages={messages} isThinking={isThinking} />
           </div>
