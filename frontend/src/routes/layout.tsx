@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router'
 import {
   LayoutGrid,
@@ -12,6 +12,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { HealthStrip } from '@/components/health/HealthStrip'
 import { ChatInputBar } from '@/components/chat/ChatInputBar'
+import { ChatMessageArea, type ChatMessage } from '@/components/chat/ChatMessageArea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 
 const NAV_TABS = [
@@ -23,19 +24,55 @@ const NAV_TABS = [
   { label: 'Session Close', path: '/session-close', icon: LogOut },
 ] as const
 
+const SOPHIA_RESPONSES = [
+  "I heard you! Chat integration is coming in a future sprint. For now, I'm focused on getting your morning brief ready.",
+  "Got it, Tayo. Full conversational mode is on the roadmap -- for now, explore the tabs above to review your clients.",
+  "Noted! I'll have full chat capabilities soon. In the meantime, the approval queue has items ready for your review.",
+  "Thanks for the message! I'm still warming up my conversational side. Check the morning brief for today's portfolio overview.",
+  "I appreciate the input! Deep chat is coming soon. Right now, your 16 clients are looking good across the board.",
+]
+
+let messageIdCounter = 0
+function nextId() {
+  return `msg-${++messageIdCounter}`
+}
+
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isThinking, setIsThinking] = useState(false)
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const responseIndexRef = useRef(0)
 
   const currentPath =
     location.pathname === '/' ? '/morning-brief' : location.pathname
 
   const handleSend = useCallback(
-    (_message: string) => {
+    (message: string) => {
+      // Add user message
+      const userMsg: ChatMessage = {
+        id: nextId(),
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      }
+      setMessages((prev) => [...prev, userMsg])
       setIsThinking(true)
-      // Placeholder: simulate thinking then stop
-      setTimeout(() => setIsThinking(false), 2000)
+
+      // Simulate Sophia's response after a brief delay
+      setTimeout(() => {
+        const response = SOPHIA_RESPONSES[responseIndexRef.current % SOPHIA_RESPONSES.length]
+        responseIndexRef.current++
+
+        const sophiaMsg: ChatMessage = {
+          id: nextId(),
+          role: 'sophia',
+          content: response,
+          timestamp: new Date(),
+        }
+        setMessages((prev) => [...prev, sophiaMsg])
+        setIsThinking(false)
+      }, 1500)
     },
     [],
   )
@@ -86,10 +123,11 @@ export function Layout() {
         postsRemaining={8}
       />
 
-      {/* Main content area */}
-      <main className="flex-1 pb-20">
-        <ScrollArea className="h-full">
+      {/* Main content area with chat */}
+      <main className="flex-1 flex flex-col pb-20 overflow-hidden">
+        <ScrollArea className="flex-1">
           <div className="mx-auto max-w-[720px] px-4 py-4">
+            {/* Route content */}
             <AnimatePresence mode="wait">
               <motion.div
                 key={currentPath}
@@ -101,6 +139,11 @@ export function Layout() {
                 <Outlet />
               </motion.div>
             </AnimatePresence>
+
+            {/* Conversation area -- at least 30% of viewport height */}
+            <div className="mt-4 border-t border-midnight-700 pt-3">
+              <ChatMessageArea messages={messages} isThinking={isThinking} />
+            </div>
           </div>
         </ScrollArea>
       </main>
