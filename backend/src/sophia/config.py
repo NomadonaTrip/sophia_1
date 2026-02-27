@@ -22,6 +22,17 @@ class Settings(BaseSettings):
     debug: bool = False
     operator_name: str = "Tayo"
 
+    # Telegram (wired in Plan 05)
+    telegram_bot_token: str = ""
+    telegram_chat_id: str = ""
+
+    # Web / API
+    base_url: str = "http://localhost:8000"
+
+    # Timezone and approval thresholds
+    operator_timezone: str = "America/Toronto"
+    stale_content_hours: int = 4  # nudge threshold for APPR deadline
+
     model_config = {
         "env_file": ".env",
         "env_prefix": "SOPHIA_",

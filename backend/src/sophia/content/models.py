@@ -106,10 +106,30 @@ class ContentDraft(TimestampMixin, Base):
         Boolean, default=False, nullable=False
     )
 
+    # Approval metadata (set by approval service)
+    approved_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    approved_by: Mapped[Optional[str]] = mapped_column(
+        String(50), nullable=True
+    )  # interface: "web", "telegram", "cli"
+    published_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    custom_post_time: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    operator_edits: Mapped[Optional[list]] = mapped_column(
+        JSON, nullable=True
+    )  # list of edit records
+    publish_mode: Mapped[Optional[str]] = mapped_column(
+        String(20), nullable=True
+    )  # "auto" or "manual"
+
     # Status and regeneration
     status: Mapped[str] = mapped_column(
         String(20), default="draft", nullable=False
-    )  # "draft", "in_review", "approved", "rejected", "published"
+    )  # "draft", "in_review", "approved", "rejected", "published", "skipped", "recovered"
     regeneration_count: Mapped[int] = mapped_column(
         Integer, default=0, nullable=False
     )

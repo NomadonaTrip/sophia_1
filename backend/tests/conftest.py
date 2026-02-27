@@ -36,6 +36,13 @@ from sophia.content.models import (  # noqa: F401 -- ensure models registered
     FormatPerformance,
     RegenerationLog,
 )
+from sophia.approval.models import (  # noqa: F401 -- ensure models registered
+    ApprovalEvent,
+    GlobalPublishState,
+    NotificationPreference,
+    PublishingQueueEntry,
+    RecoveryLog,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 

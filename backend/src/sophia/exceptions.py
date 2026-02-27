@@ -118,6 +118,34 @@ class ContentGenerationError(SophiaError):
         super().__init__(message, detail, suggestion)
 
 
+class InvalidTransitionError(SophiaError):
+    """Raised when an invalid state transition is attempted.
+
+    The approval state machine enforces valid transitions; this error
+    fires when a transition violates the allowed graph (e.g. draft->published).
+    """
+
+    def __init__(
+        self,
+        message: str = "Invalid state transition",
+        detail: str | None = None,
+        suggestion: str | None = "Check the approval state machine for valid transitions",
+    ) -> None:
+        super().__init__(message, detail, suggestion)
+
+
+class ContentNotFoundError(SophiaError):
+    """Raised when a content draft cannot be found."""
+
+    def __init__(
+        self,
+        message: str = "Content draft not found",
+        detail: str | None = None,
+        suggestion: str | None = "Check draft ID or query the approval queue",
+    ) -> None:
+        super().__init__(message, detail, suggestion)
+
+
 class RegenerationLimitError(SophiaError):
     """Raised when a draft has reached the maximum regeneration attempts (3).
 

@@ -260,12 +260,20 @@ class TestEventBusPublish:
         received = []
 
         async def _run():
+            # Start subscribe generator and advance to the await point
             gen = bus.subscribe()
-            # Publish before consuming
+
+            # Schedule the consumer to start reading
+            async def consume():
+                event = await asyncio.wait_for(gen.__anext__(), timeout=2.0)
+                received.append(event)
+                await gen.aclose()
+
+            task = asyncio.ensure_future(consume())
+            # Yield control so subscribe registers its queue
+            await asyncio.sleep(0.01)
             await bus.publish("test_event", {"key": "value"})
-            event = await asyncio.wait_for(gen.__anext__(), timeout=1.0)
-            received.append(event)
-            await gen.aclose()
+            await task
 
         asyncio.run(_run())
         assert len(received) == 1
