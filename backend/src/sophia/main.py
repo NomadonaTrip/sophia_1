@@ -36,9 +36,13 @@ async def lifespan(app: FastAPI):
     scheduler = create_scheduler(scheduler_db_url)
     scheduler.start()
 
+    # Lazy session factory -- reused by stale monitor and Telegram bot
+    def _session_factory():
+        from sophia.db.engine import SessionLocal
+        return SessionLocal()
+
     # Register stale content monitor (runs every 30 min)
-    # db_session_factory placeholder -- wired when full app assembled
-    # register_stale_monitor(scheduler, db_session_factory)
+    register_stale_monitor(scheduler, _session_factory)
 
     app.state.scheduler = scheduler
 
@@ -46,11 +50,6 @@ async def lifespan(app: FastAPI):
     if settings.telegram_bot_token:
         from sophia.telegram.bot import build_telegram_app
         from sophia.publishing.notifications import notification_service
-
-        # Lazy-import session factory to avoid slow NTFS imports at startup
-        def _session_factory():
-            from sophia.db.engine import SessionLocal
-            return SessionLocal()
 
         tg_app = await build_telegram_app(
             token=settings.telegram_bot_token,
