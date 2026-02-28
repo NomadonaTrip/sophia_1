@@ -17,6 +17,12 @@ from sophia.publishing.stale_monitor import register_stale_monitor
 from sophia.research.router import router as research_router
 
 
+def _session_factory():
+    """Lazy session factory -- module-level so APScheduler can pickle it."""
+    from sophia.db.engine import SessionLocal
+    return SessionLocal()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan: start/stop APScheduler and Telegram bot.
@@ -35,11 +41,6 @@ async def lifespan(app: FastAPI):
     scheduler_db_url = f"sqlite:///{scheduler_dir}/scheduler.db"
     scheduler = create_scheduler(scheduler_db_url)
     scheduler.start()
-
-    # Lazy session factory -- reused by stale monitor and Telegram bot
-    def _session_factory():
-        from sophia.db.engine import SessionLocal
-        return SessionLocal()
 
     # Register stale content monitor (runs every 30 min)
     register_stale_monitor(scheduler, _session_factory)

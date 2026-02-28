@@ -88,8 +88,14 @@ async def build_telegram_app(
         MessageHandler(filters.TEXT & ~filters.COMMAND, text_reply_handler)
     )
 
-    # Set webhook
-    await app.bot.set_webhook(url=webhook_url)
-
-    logger.info("Telegram bot configured with webhook at %s", webhook_url)
+    # Set webhook (requires HTTPS -- skip in local development)
+    if webhook_url.startswith("https://"):
+        await app.bot.set_webhook(url=webhook_url)
+        logger.info("Telegram bot configured with webhook at %s", webhook_url)
+    else:
+        logger.warning(
+            "Skipping Telegram webhook setup: HTTPS required (got %s). "
+            "Bot handlers registered but webhook inactive.",
+            webhook_url,
+        )
     return app
