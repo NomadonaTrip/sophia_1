@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 04-05-PLAN.md (Telegram bot + voice input)
-last_updated: "2026-02-28T04:46:14Z"
+stopped_at: Completed 04-06-PLAN.md (gap closure - image upload wiring + stale monitor)
+last_updated: "2026-02-28T07:41:20Z"
 progress:
   total_phases: 6
   completed_phases: 4
-  total_plans: 21
-  completed_plans: 16
+  total_plans: 22
+  completed_plans: 17
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 4: Approval & Publishing Workflow**
 - Status: Complete
-- Current Plan: 5/5
-- Plans: 5/5 complete
+- Current Plan: 6/6
+- Plans: 6/6 complete
 
 ## Milestone Progress
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
-| 4 | ● | 5/5 | 100% |
+| 4 | ● | 6/6 | 100% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: ████████░░ 76%
+Progress: ████████░░ 77%
 
 ## Decision Log
 
@@ -113,6 +113,8 @@ Progress: ████████░░ 76%
 | 2026-02-28 | Session factory in bot_data for handler DB access | Phase 04-05: each handler creates/closes own session from context.bot_data |
 | 2026-02-28 | Speech type shims in useVoiceInput.ts | Phase 04-05: Web Speech API types not in default TS lib, custom interfaces |
 | 2026-02-28 | Social platform credentials in Settings | Phase 04-05: facebook/instagram tokens for future MCP server wiring |
+| 2026-02-28 | Shared _session_factory defined once in lifespan | Phase 04-06: reused by stale monitor and Telegram bot, eliminates duplication |
+| 2026-02-28 | getattr fallback for draft.image_url in scheduler | Phase 04-06: backward compatibility during migration |
 
 ## Performance Metrics
 
@@ -133,12 +135,13 @@ Progress: ████████░░ 76%
 | 04-03 | 9min | 2 | 12 |
 | 04-04 | 25min | 3 | 28 |
 | 04-05 | 16min | 2 | 13 |
+| 04-06 | 11min | 2 | 6 |
 
 ## Last Session
 
-**Stopped at:** Completed 04-05-PLAN.md (Telegram bot + voice input)
+**Stopped at:** Completed 04-06-PLAN.md (gap closure - image upload wiring + stale monitor)
 **Resume with:** Phase 5 Plan 05-01 (first plan of monitoring/analytics phase)
 **Resume file:** .planning/phases/05-*/05-01-PLAN.md
 
 ---
-*Last updated: 2026-02-28 after 04-05-PLAN.md execution*
+*Last updated: 2026-02-28 after 04-06-PLAN.md execution*
