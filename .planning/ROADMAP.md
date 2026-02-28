@@ -83,7 +83,7 @@ Plans:
   3. Sophia never publishes content without explicit human approval
   4. Operator can trigger content recovery for any published post and Sophia executes the recovery protocol
   5. Operator can use browser-based voice input via Web Speech API in the web interface
-**Plans**: 5 plans across 3 waves
+**Plans**: 6 plans across 3 waves
 
 Plans:
 - [ ] 04-01-PLAN.md — Backend approval infrastructure: models, state machine, service, event bus, CLI, router (Wave 1) [APPR-01, APPR-02, APPR-05, APPR-06]
@@ -91,6 +91,7 @@ Plans:
 - [ ] 04-03-PLAN.md — Publishing pipeline: APScheduler, MCP dispatch, rate limiter, cadence, recovery (Wave 2, depends on 04-01) [APPR-03, APPR-04, SAFE-03, SAFE-04]
 - [ ] 04-04-PLAN.md — Frontend approval UI: content cards, SSE sync, keyboard shortcuts, batch approval (Wave 2, depends on 04-01, 04-02) [APPR-01, APPR-05]
 - [ ] 04-05-PLAN.md — Telegram bot + browser voice input (Wave 3, depends on 04-01, 04-04) [APPR-01, APPR-07]
+- [ ] 04-06-PLAN.md — Gap closure: wire image upload to DB + enable stale content monitor (Wave 1, gap closure) [APPR-03, APPR-06]
 
 ### Phase 5: Performance Analytics & Evaluation
 **Goal**: Sophia tracks engagement metrics, evaluates content performance against KPIs, and builds a decision quality feedback loop
@@ -136,6 +137,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 1. Client Foundation & Data Security | 3/3 | Complete | 2026-02-27 |
 | 2. Research & Semantic Intelligence | 4/4 | Complete | 2026-02-27 |
 | 3. Content Generation & Quality Gates | 4/4 | Complete | 2026-02-27 |
-| 4. Approval, Publishing & Recovery | 4/5 | In Progress | - |
+| 4. Approval, Publishing & Recovery | 5/6 | Gap closure | - |
 | 5. Performance Analytics & Evaluation | 0/3 | Not started | - |
 | 6. Learning, Evolution & Client Communication | 0/3 | Not started | - |

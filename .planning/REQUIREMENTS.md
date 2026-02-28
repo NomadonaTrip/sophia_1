@@ -50,7 +50,7 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **APPR-04**: Sophia can schedule posts respecting cadence, timing, and rate limits (FR27)
 - [x] **APPR-05**: Approval state is consistent across all interfaces in real time (FR28)
 - [x] **APPR-06**: Sophia never publishes content without explicit human approval (FR29)
-- [ ] **APPR-07**: Operator can use browser-based voice input via Web Speech API (FR65)
+- [x] **APPR-07**: Operator can use browser-based voice input via Web Speech API (FR65)
 
 ### Performance & Analytics
 
@@ -171,7 +171,7 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | APPR-04 | Phase 4 | Complete |
 | APPR-05 | Phase 4 | Complete |
 | APPR-06 | Phase 4 | Complete |
-| APPR-07 | Phase 4 | Pending |
+| APPR-07 | Phase 4 | Complete |
 | SAFE-03 | Phase 4 | Complete |
 | SAFE-04 | Phase 4 | Complete |
 | ANLY-01 | Phase 5 | Pending |

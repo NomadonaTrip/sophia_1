@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 04-04-PLAN.md (frontend approval UI)
-last_updated: "2026-02-28T04:05:38Z"
+stopped_at: Completed 04-05-PLAN.md (Telegram bot + voice input)
+last_updated: "2026-02-28T04:46:14Z"
 progress:
   total_phases: 6
-  completed_phases: 3
-  total_plans: 16
-  completed_plans: 15
+  completed_phases: 4
+  total_plans: 21
+  completed_plans: 16
 ---
 
 # Project State: Sophia
@@ -24,9 +24,9 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 ## Current Phase
 
 **Phase 4: Approval & Publishing Workflow**
-- Status: In Progress
+- Status: Complete
 - Current Plan: 5/5
-- Plans: 4/5 complete
+- Plans: 5/5 complete
 
 ## Milestone Progress
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
-| 4 | ◐ | 4/5 | 80% |
+| 4 | ● | 5/5 | 100% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: █████████░ 93%
+Progress: ████████░░ 76%
 
 ## Decision Log
 
@@ -109,6 +109,10 @@ Progress: █████████░ 93%
 | 2026-02-28 | Lazy-loaded spacy in voice_alignment.py | Phase 04-04: prevents 5+ min startup hang on NTFS mounts in WSL2 |
 | 2026-02-28 | Session-level rejection tracking in useApproval hook | Phase 04-04: useState tracks per-client rejection counts for calibration auto-suggest at 3+ |
 | 2026-02-28 | NetworkErrorBanner with exponential backoff retry | Phase 04-04: 2s/4s/8s retry intervals matching CONTEXT.md locked decision |
+| 2026-02-28 | Lazy telegram imports in handlers.py for testability | Phase 04-05: enables testing without python-telegram-bot installed |
+| 2026-02-28 | Session factory in bot_data for handler DB access | Phase 04-05: each handler creates/closes own session from context.bot_data |
+| 2026-02-28 | Speech type shims in useVoiceInput.ts | Phase 04-05: Web Speech API types not in default TS lib, custom interfaces |
+| 2026-02-28 | Social platform credentials in Settings | Phase 04-05: facebook/instagram tokens for future MCP server wiring |
 
 ## Performance Metrics
 
@@ -128,12 +132,13 @@ Progress: █████████░ 93%
 | 04-01 | 8min | 2 | 15 |
 | 04-03 | 9min | 2 | 12 |
 | 04-04 | 25min | 3 | 28 |
+| 04-05 | 16min | 2 | 13 |
 
 ## Last Session
 
-**Stopped at:** Completed 04-04-PLAN.md (frontend approval UI)
-**Resume with:** Phase 4 Plan 04-05 (Telegram bot + browser voice input)
-**Resume file:** .planning/phases/04-*/04-05-PLAN.md
+**Stopped at:** Completed 04-05-PLAN.md (Telegram bot + voice input)
+**Resume with:** Phase 5 Plan 05-01 (first plan of monitoring/analytics phase)
+**Resume file:** .planning/phases/05-*/05-01-PLAN.md
 
 ---
-*Last updated: 2026-02-28 after 04-04-PLAN.md execution*
+*Last updated: 2026-02-28 after 04-05-PLAN.md execution*
