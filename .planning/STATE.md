@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-01-PLAN.md (analytics data foundation)
-last_updated: "2026-02-28T13:00:39Z"
+stopped_at: Completed 05-02-PLAN.md (analytics computation layer)
+last_updated: "2026-02-28T13:17:48.924Z"
 progress:
   total_phases: 6
-  completed_phases: 4
-  total_plans: 20
-  completed_plans: 18
+  completed_phases: 5
+  total_plans: 23
+  completed_plans: 20
 ---
 
 # Project State: Sophia
@@ -19,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Core value:** Every piece of content is informed, not invented -- grounded in current research, stored client intelligence, and the client's voice profile.
-**Current focus:** Phase 5 -- Performance, Analytics & Evaluation
+**Current focus:** Phase 6 -- Operator Experience & Polish
 
 ## Current Phase
 
 **Phase 5: Performance, Analytics & Evaluation**
-- Status: In Progress
-- Current Plan: 2/3
-- Plans: 1/3 complete
+- Status: Complete
+- Current Plan: 3/3
+- Plans: 3/3 complete
 
 ## Milestone Progress
 
@@ -36,10 +36,10 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
 | 4 | ● | 6/6 | 100% |
-| 5 | ◐ | 1/3 | 33% |
+| 5 | ● | 3/3 | 100% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: █████████░ 82%
+Progress: █████████░ 91%
 
 ## Decision Log
 
@@ -119,6 +119,14 @@ Progress: █████████░ 82%
 | 2026-02-28 | Router _get_db wired directly with lazy SessionLocal | Phase 05-01: matches approval router pattern, not placeholder |
 | 2026-02-28 | APScheduler cron with asyncio.run() sync wrapper | Phase 05-01: async-in-sync bridge for daily metric pull job |
 | 2026-02-28 | Reaction breakdown dicts flattened to separate metric rows | Phase 05-01: enables per-reaction-type queries on EngagementMetric |
+| 2026-02-28 | stdlib statistics.median for MAD anomaly detection | Phase 05-02: lighter dependency than numpy/scipy for single-value anomaly detection |
+| 2026-02-28 | Sage/amber/coral classification thresholds | Phase 05-02: coral = high anomaly OR 3+ week decline; amber = medium anomaly OR approval < 70% |
+| 2026-02-28 | Session.get() over deprecated Query.get() | Phase 05-02: SQLAlchemy 2.0 API compatibility |
+| 2026-02-28 | ICP fuzzy matching for location and age range | Phase 05-02: substring matching for cities, overlap percentage for age ranges |
+| 2026-02-28 | Weighted quality scoring per decision type | Phase 05-03: topic_selection weights engagement/save/reach differently from format_choice |
+| 2026-02-28 | Evidence capped at 5 key-value pairs | Phase 05-03: prevents trace bloat per pitfall #4 from research |
+| 2026-02-28 | Quality ratio capped at 2.0 | Phase 05-03: prevents extreme distortion from over-prediction |
+| 2026-02-28 | try/except ImportError for all pipeline integrations | Phase 05-03: analytics module is optional, existing code works without it |
 
 ## Performance Metrics
 
@@ -141,12 +149,14 @@ Progress: █████████░ 82%
 | 04-05 | 16min | 2 | 13 |
 | 04-06 | 11min | 2 | 6 |
 | 05-01 | 9min | 2 | 14 |
+| 05-02 | 12min | 2 | 13 |
+| 05-03 | 9min | 2 | 12 |
 
 ## Last Session
 
-**Stopped at:** Completed 05-01-PLAN.md (analytics data foundation)
-**Resume with:** Phase 5 Plan 05-02 (KPI computation, trend analysis, anomaly detection)
-**Resume file:** .planning/phases/05-*/05-02-PLAN.md
+**Stopped at:** Completed 05-02-PLAN.md (analytics computation layer)
+**Resume with:** Phase 6 Plan 06-01 (Operator Experience and Polish)
+**Resume file:** None
 
 ---
-*Last updated: 2026-02-28 after 05-01-PLAN.md execution*
+*Last updated: 2026-02-28 after 05-03-PLAN.md execution*

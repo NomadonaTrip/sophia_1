@@ -55,21 +55,21 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 ### Performance & Analytics
 
 - [x] **ANLY-01**: Sophia can pull engagement data from platform APIs into the database (FR30)
-- [ ] **ANLY-02**: Sophia can track per-client KPIs weekly (FR31)
+- [x] **ANLY-02**: Sophia can track per-client KPIs weekly (FR31)
 - [x] **ANLY-03**: Sophia can track algorithm-independent metrics separately from algorithm-dependent metrics (FR32)
-- [ ] **ANLY-04**: Sophia can measure content approval rate and edit frequency per client over time (FR33)
-- [ ] **ANLY-05**: Sophia can compare audience demographics against each client's ICP (FR34)
-- [ ] **ANLY-06**: Sophia can track engagement-to-inquiry conversion pathways (FR35)
+- [x] **ANLY-04**: Sophia can measure content approval rate and edit frequency per client over time (FR33)
+- [x] **ANLY-05**: Sophia can compare audience demographics against each client's ICP (FR34)
+- [x] **ANLY-06**: Sophia can track engagement-to-inquiry conversion pathways (FR35)
 - [x] **ANLY-07**: Sophia can append UTM parameters to all published links (FR36)
-- [ ] **ANLY-08**: Sophia can group posts into campaigns and track campaign-level metrics (FR36a)
-- [ ] **ANLY-09**: Sophia can track CAC from social channels when client data available (FR36b)
+- [x] **ANLY-08**: Sophia can group posts into campaigns and track campaign-level metrics (FR36a)
+- [x] **ANLY-09**: Sophia can track CAC from social channels when client data available (FR36b)
 
 ### Evaluation Pipeline
 
-- [ ] **EVAL-01**: Sophia can persist structured decision traces per content cycle stage (FR58)
-- [ ] **EVAL-02**: Sophia can attribute performance outcomes to specific decisions (FR59)
-- [ ] **EVAL-03**: Sophia can evaluate decision quality by comparing rationale against outcomes (FR60)
-- [ ] **EVAL-04**: Sophia can use decision quality data to inform future content decisions (FR61)
+- [x] **EVAL-01**: Sophia can persist structured decision traces per content cycle stage (FR58)
+- [x] **EVAL-02**: Sophia can attribute performance outcomes to specific decisions (FR59)
+- [x] **EVAL-03**: Sophia can evaluate decision quality by comparing rationale against outcomes (FR60)
+- [x] **EVAL-04**: Sophia can use decision quality data to inform future content decisions (FR61)
 
 ### Learning & Self-Improvement
 
@@ -175,18 +175,18 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | SAFE-03 | Phase 4 | Complete |
 | SAFE-04 | Phase 4 | Complete |
 | ANLY-01 | Phase 5 | Complete |
-| ANLY-02 | Phase 5 | Pending |
+| ANLY-02 | Phase 5 | Complete |
 | ANLY-03 | Phase 5 | Complete |
-| ANLY-04 | Phase 5 | Pending |
-| ANLY-05 | Phase 5 | Pending |
-| ANLY-06 | Phase 5 | Pending |
+| ANLY-04 | Phase 5 | Complete |
+| ANLY-05 | Phase 5 | Complete |
+| ANLY-06 | Phase 5 | Complete |
 | ANLY-07 | Phase 5 | Complete |
-| ANLY-08 | Phase 5 | Pending |
-| ANLY-09 | Phase 5 | Pending |
-| EVAL-01 | Phase 5 | Pending |
-| EVAL-02 | Phase 5 | Pending |
-| EVAL-03 | Phase 5 | Pending |
-| EVAL-04 | Phase 5 | Pending |
+| ANLY-08 | Phase 5 | Complete |
+| ANLY-09 | Phase 5 | Complete |
+| EVAL-01 | Phase 5 | Complete |
+| EVAL-02 | Phase 5 | Complete |
+| EVAL-03 | Phase 5 | Complete |
+| EVAL-04 | Phase 5 | Complete |
 | LRNG-01 | Phase 6 | Pending |
 | LRNG-02 | Phase 6 | Pending |
 | LRNG-03 | Phase 6 | Pending |
