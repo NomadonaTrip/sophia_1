@@ -23,11 +23,30 @@ from sophia.publishing.notifications import notify_publish_complete, notify_publ
 
 logger = logging.getLogger(__name__)
 
+# UTM injection for analytics tracking (ANLY-07)
+try:
+    from sophia.analytics.utm import inject_utm_into_copy
+    _HAS_UTM = True
+except ImportError:
+    _HAS_UTM = False
+
 # Maximum retry attempts before marking as failed
 MAX_RETRIES = 3
 
 # Backoff schedule in minutes: 2, 4, 8
 BACKOFF_MINUTES = [2, 4, 8]
+
+
+def _derive_campaign_slug(draft: "ContentDraft") -> str:
+    """Derive campaign slug from draft's content_pillar.
+
+    Slugifies the content_pillar (lowercase, spaces to hyphens).
+    Falls back to 'general' when content_pillar is None or empty.
+    """
+    pillar = getattr(draft, "content_pillar", None)
+    if not pillar or not pillar.strip():
+        return "general"
+    return pillar.strip().lower().replace(" ", "-").replace("_", "-")
 
 
 async def execute_publish(
@@ -92,9 +111,17 @@ async def execute_publish(
         entry.status = "publishing"
         db.flush()
 
+        # Inject UTM parameters into any URLs in post copy (ANLY-07)
+        publish_copy = draft.copy
+        if _HAS_UTM and draft.copy:
+            campaign_slug = _derive_campaign_slug(draft)
+            publish_copy = inject_utm_into_copy(
+                draft.copy, platform, campaign_slug, draft.id
+            )
+
         try:
             result = await _dispatch_mcp(platform, {
-                "copy": draft.copy,
+                "copy": publish_copy,
                 "image_url": entry.image_url,
                 "hashtags": draft.hashtags,
                 "alt_text": draft.alt_text,

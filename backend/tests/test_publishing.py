@@ -642,3 +642,91 @@ async def test_notification_channel_failure_does_not_break_publish():
         mock_bus.publish.assert_called_once()
         # Working channel still called
         working_channel.assert_called_once_with("test_event", {"key": "value"})
+
+
+# ---------------------------------------------------------------------------
+# Test 20: UTM injected into dispatched copy
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_utm_injected_into_dispatched_copy(db_session, sample_client):
+    """UTM parameters are injected into post copy URLs before MCP dispatch."""
+    from sophia.publishing.executor import execute_publish
+
+    draft = _make_draft(db_session, sample_client.id, platform="facebook")
+    draft.copy = "Check out https://example.com/spring-tips"
+    draft.content_pillar = "Spring Tips"
+    db_session.flush()
+
+    entry = _make_queue_entry(db_session, draft)
+
+    mock_result = {"post_id": "fb_utm1", "url": "https://facebook.com/post/utm1"}
+    with patch(
+        "sophia.publishing.executor._dispatch_mcp", new_callable=AsyncMock
+    ) as mock_mcp:
+        mock_mcp.return_value = mock_result
+        await execute_publish(draft.id, "facebook", lambda: db_session)
+
+        mock_mcp.assert_called_once()
+        dispatched_copy = mock_mcp.call_args[0][1]["copy"]
+        assert "utm_source=facebook" in dispatched_copy
+        assert "utm_campaign=spring-tips" in dispatched_copy
+        assert f"utm_content=post_{draft.id}" in dispatched_copy
+
+
+# ---------------------------------------------------------------------------
+# Test 21: UTM not injected when no URLs
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_utm_not_injected_when_no_urls(db_session, sample_client):
+    """Copy without URLs passes through unchanged -- no UTM injection."""
+    from sophia.publishing.executor import execute_publish
+
+    draft = _make_draft(db_session, sample_client.id, platform="facebook")
+    draft.copy = "No links here just great content"
+    db_session.flush()
+
+    entry = _make_queue_entry(db_session, draft)
+
+    mock_result = {"post_id": "fb_utm2", "url": "https://facebook.com/post/utm2"}
+    with patch(
+        "sophia.publishing.executor._dispatch_mcp", new_callable=AsyncMock
+    ) as mock_mcp:
+        mock_mcp.return_value = mock_result
+        await execute_publish(draft.id, "facebook", lambda: db_session)
+
+        mock_mcp.assert_called_once()
+        dispatched_copy = mock_mcp.call_args[0][1]["copy"]
+        assert dispatched_copy == "No links here just great content"
+
+
+# ---------------------------------------------------------------------------
+# Test 22: UTM campaign slug defaults to general
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_utm_campaign_slug_defaults_to_general(db_session, sample_client):
+    """When content_pillar is None, campaign slug defaults to 'general'."""
+    from sophia.publishing.executor import execute_publish
+
+    draft = _make_draft(db_session, sample_client.id, platform="facebook")
+    draft.copy = "Visit https://example.com"
+    draft.content_pillar = None
+    db_session.flush()
+
+    entry = _make_queue_entry(db_session, draft)
+
+    mock_result = {"post_id": "fb_utm3", "url": "https://facebook.com/post/utm3"}
+    with patch(
+        "sophia.publishing.executor._dispatch_mcp", new_callable=AsyncMock
+    ) as mock_mcp:
+        mock_mcp.return_value = mock_result
+        await execute_publish(draft.id, "facebook", lambda: db_session)
+
+        mock_mcp.assert_called_once()
+        dispatched_copy = mock_mcp.call_args[0][1]["copy"]
+        assert "utm_campaign=general" in dispatched_copy
