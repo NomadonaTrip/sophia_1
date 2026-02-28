@@ -61,6 +61,7 @@ class ContentDraft(TimestampMixin, Base):
     )  # "1:1", "4:5", "1.91:1", "9:16"
     hashtags: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
     alt_text: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
     suggested_post_time: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

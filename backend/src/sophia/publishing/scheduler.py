@@ -79,6 +79,7 @@ async def schedule_publish(
         scheduled_at=adjusted_time,
         publish_mode="auto",
         status="queued",
+        image_url=getattr(draft, "image_url", None),
     )
     db.add(entry)
     db.flush()

@@ -275,6 +275,35 @@ class TestRecoverEndpoint:
 # =============================================================================
 
 
+# =============================================================================
+# Test 12b: upload image sets draft.image_url
+# =============================================================================
+
+
+class TestUploadImageSetsDraftImageUrl:
+    def test_upload_sets_image_url(self, client, db_session, sample_client):
+        """Upload endpoint persists image_url on the ContentDraft."""
+        draft = _make_draft(db_session, sample_client.id, status="in_review")
+        assert draft.image_url is None
+
+        import io
+
+        file_content = b"fake image bytes"
+        resp = client.post(
+            f"/api/approval/drafts/{draft.id}/upload-image",
+            files={"file": ("test.png", io.BytesIO(file_content), "image/png")},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "image_url" in data
+        assert data["image_url"].endswith(".png")
+
+        # Verify DB was updated
+        db_session.refresh(draft)
+        assert draft.image_url is not None
+        assert "test.png" in draft.image_url
+
+
 class TestRecoverNonPublishedReturns409:
     def test_recover_nonpublished_returns_409(self, client, db_session, sample_client):
         draft = _make_draft(db_session, sample_client.id, status="in_review")

@@ -384,9 +384,14 @@ async def upload_image_endpoint(
     with open(filepath, "wb") as f:
         f.write(contents)
 
+    # Persist image path to draft
+    draft.image_url = str(filepath)
+    db.commit()
+
     return {
         "draft_id": draft_id,
         "image_path": str(filepath),
+        "image_url": str(filepath),
         "filename": filename,
         "size_bytes": len(contents),
     }

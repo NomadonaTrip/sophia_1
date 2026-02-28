@@ -46,6 +46,7 @@ def _make_draft(
         image_ratio="1:1",
         status=status,
         publish_mode="auto",
+        image_url=image_url,
     )
     db.add(draft)
     db.flush()
@@ -471,6 +472,33 @@ async def test_publish_event_broadcast(db_session, sample_client):
             # Should include URL
             call_args = mock_notify.call_args
             assert "facebook.com" in call_args[0][1]  # platform_url arg
+
+
+# ---------------------------------------------------------------------------
+# Test 14b: schedule_publish copies image_url from draft
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_schedule_publish_copies_image_url(db_session, sample_client):
+    """schedule_publish copies draft.image_url to entry.image_url."""
+    from sophia.publishing.scheduler import create_scheduler, schedule_publish
+
+    scheduler = create_scheduler(scheduler_db_url="sqlite://")
+    scheduler.start()
+    try:
+        draft = _make_draft(
+            db_session, sample_client.id, image_url="data/uploads/test.png"
+        )
+        publish_at = datetime.now(timezone.utc) + timedelta(hours=1)
+
+        entry = await schedule_publish(
+            scheduler, db_session, draft.id, "facebook", publish_at
+        )
+
+        assert entry.image_url == "data/uploads/test.png"
+    finally:
+        scheduler.shutdown(wait=False)
 
 
 # ---------------------------------------------------------------------------
