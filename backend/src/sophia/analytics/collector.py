@@ -380,6 +380,23 @@ async def pull_all_clients_metrics(
     return results
 
 
+def _daily_metric_job(db_session_factory: Callable[[], Session], settings: Settings):
+    """Sync wrapper for async metric pull (APScheduler thread bridge).
+
+    Module-level function so APScheduler's SQLAlchemy job store can
+    serialize it by reference (nested functions can't be pickled).
+    """
+    db = db_session_factory()
+    try:
+        asyncio.run(pull_all_clients_metrics(db, settings))
+        db.commit()
+    except Exception as e:
+        logger.error("Daily metric pull failed: %s", e)
+        db.rollback()
+    finally:
+        db.close()
+
+
 def register_daily_metric_pull(
     scheduler: Any,
     db_session_factory: Callable[[], Session],
@@ -406,18 +423,6 @@ def register_daily_metric_pull(
 
     tz = zoneinfo.ZoneInfo(settings.operator_timezone)
 
-    def _daily_metric_job():
-        """Sync wrapper for async metric pull (APScheduler thread bridge)."""
-        db = db_session_factory()
-        try:
-            asyncio.run(pull_all_clients_metrics(db, settings))
-            db.commit()
-        except Exception as e:
-            logger.error("Daily metric pull failed: %s", e)
-            db.rollback()
-        finally:
-            db.close()
-
     scheduler.add_job(
         _daily_metric_job,
         trigger="cron",
@@ -426,6 +431,7 @@ def register_daily_metric_pull(
         timezone=tz,
         id="daily_metric_pull",
         replace_existing=True,
+        args=[db_session_factory, settings],
     )
 
     logger.info(
