@@ -10,6 +10,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from sophia.analytics.router import analytics_router
 from sophia.approval.router import approval_router, events_router
 from sophia.content.router import content_router
 from sophia.publishing.scheduler import create_scheduler
@@ -44,6 +45,11 @@ async def lifespan(app: FastAPI):
 
     # Register stale content monitor (runs every 30 min)
     register_stale_monitor(scheduler, _session_factory)
+
+    # Register daily metric pull (6 AM operator timezone)
+    from sophia.analytics.collector import register_daily_metric_pull
+
+    register_daily_metric_pull(scheduler, _session_factory, settings)
 
     app.state.scheduler = scheduler
 
@@ -142,6 +148,7 @@ app.include_router(approval_router)
 app.include_router(events_router)
 app.include_router(content_router)
 app.include_router(research_router)
+app.include_router(analytics_router)
 
 
 # Telegram webhook endpoint
