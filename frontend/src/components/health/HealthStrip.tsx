@@ -38,10 +38,11 @@ export function HealthStrip({
 
   return (
     <div
-      className="flex items-center gap-4 sm:gap-6 px-4 py-2 bg-midnight-800/80 backdrop-blur-sm border-b border-midnight-700"
+      className="bg-midnight-800/80 backdrop-blur-sm border-b border-midnight-700"
       role="status"
       aria-live="polite"
     >
+      <div className="mx-auto w-[60%] flex items-center gap-4 sm:gap-6 px-4 py-2">
       {isQueueClear ? (
         <div className="flex items-center gap-1.5 text-sage-300 text-xs">
           <Check className="h-3.5 w-3.5" />
@@ -72,6 +73,7 @@ export function HealthStrip({
 
       <div className="ml-auto text-xs text-text-muted">
         <span className="tabular-nums">{postsRemaining}</span> posts remaining
+      </div>
       </div>
     </div>
   )

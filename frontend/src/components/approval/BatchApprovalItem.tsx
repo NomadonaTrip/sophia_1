@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { motion } from 'motion/react'
 import { Check, X, Pencil, Clock, Mic2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,11 @@ export function BatchApprovalItem({
   onEdit,
 }: BatchApprovalItemProps) {
   const [localApproved, setLocalApproved] = useState(isApproved)
+
+  // Sync parent prop to local state (fixes batch fade on "Approve All")
+  useEffect(() => {
+    setLocalApproved(isApproved)
+  }, [isApproved])
 
   const handleApprove = useCallback(() => {
     setLocalApproved(true)

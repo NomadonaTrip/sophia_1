@@ -67,7 +67,7 @@ export function ChatInputBar({
         role="form"
         aria-label="Message Sophia"
       >
-        <div className="mx-auto max-w-[720px] flex items-center gap-2 px-3 py-2.5">
+        <div className="mx-auto w-[60%] flex items-center gap-2 px-3 py-2.5">
           {/* Mic button */}
           <button
             type="button"

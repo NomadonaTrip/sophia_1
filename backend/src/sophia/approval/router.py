@@ -47,15 +47,14 @@ events_router = APIRouter(tags=["events"])
 
 
 def _get_db():
-    """Placeholder DB dependency.
+    """Yield a SQLAlchemy session. Lazy-imports engine to avoid slow NTFS imports at startup."""
+    from sophia.db.engine import SessionLocal
 
-    In production, this yields a SQLAlchemy session from the engine.
-    Wired during app assembly (same pattern as content_router, research_router).
-    """
-    raise NotImplementedError(
-        "DB dependency not wired. Call approval_router.dependency_overrides "
-        "or wire via app assembly."
-    )
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # -- Approval Action Endpoints ------------------------------------------------
@@ -275,17 +274,34 @@ def queue_endpoint(
     status: Optional[str] = Query(None),
     db: Session = Depends(_get_db),
 ) -> list[dict]:
-    """Get the approval queue with optional filters."""
+    """Get the approval queue with all fields needed by the frontend ContentItem."""
+    from sophia.intelligence.models import Client
+
     drafts = get_approval_queue(db, client_id=client_id, status=status)
+
+    # Build client name lookup
+    client_ids = {d.client_id for d in drafts}
+    clients = {c.id: c.name for c in db.query(Client).filter(Client.id.in_(client_ids)).all()} if client_ids else {}
+
     return [
         {
             "id": d.id,
             "client_id": d.client_id,
+            "client_name": clients.get(d.client_id, f"Client {d.client_id}"),
             "platform": d.platform,
-            "copy": d.copy[:200],
+            "copy": d.copy,
+            "image_prompt": d.image_prompt,
+            "image_url": getattr(d, "image_url", None),
+            "hashtags": d.hashtags,
+            "voice_alignment_pct": d.voice_confidence_pct,
+            "research_source_count": len(d.research_source_ids) if d.research_source_ids else 0,
+            "content_pillar": d.content_pillar,
+            "scheduled_time": str(d.suggested_post_time) if d.suggested_post_time else None,
+            "publish_mode": d.publish_mode,
             "status": d.status,
-            "voice_confidence_pct": d.voice_confidence_pct,
-            "created_at": str(d.created_at),
+            "regeneration_guidance": d.regeneration_guidance[-1] if d.regeneration_guidance else None,
+            "gate_report": d.gate_report,
+            "suggested_time": str(d.suggested_post_time) if d.suggested_post_time else None,
         }
         for d in drafts
     ]

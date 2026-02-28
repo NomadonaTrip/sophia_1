@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, type KeyboardEvent } from 'react'
+import { useState, useCallback, useRef, useEffect, type KeyboardEvent } from 'react'
 import { motion } from 'motion/react'
 import {
   Check,
@@ -55,6 +55,8 @@ interface ContentItemProps {
   onUploadImage: (draftId: number, file: File) => void
   onRecover?: (draftId: number) => void
   onFocus?: () => void
+  rejectTrigger?: number
+  editTrigger?: number
   tabIndex?: number
 }
 
@@ -90,6 +92,8 @@ export function ContentItem({
   onUploadImage,
   onRecover,
   onFocus,
+  rejectTrigger,
+  editTrigger,
   tabIndex = 0,
 }: ContentItemProps) {
   const [isApproved, setIsApproved] = useState(draft.status === 'approved')
@@ -98,6 +102,22 @@ export function ContentItem({
   const [editCopy, setEditCopy] = useState(draft.copy)
   const [rejectPulse, setRejectPulse] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Allow parent to trigger reject flow via counter prop
+  useEffect(() => {
+    if (rejectTrigger && rejectTrigger > 0) {
+      setShowRejectTags(true)
+      setRejectPulse(true)
+      setTimeout(() => setRejectPulse(false), 400)
+    }
+  }, [rejectTrigger])
+
+  // Allow parent to trigger edit mode via counter prop
+  useEffect(() => {
+    if (editTrigger && editTrigger > 0) {
+      setIsEditing(true)
+    }
+  }, [editTrigger])
 
   const handleApprove = useCallback(() => {
     setIsApproved(true)

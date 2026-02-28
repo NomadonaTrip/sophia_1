@@ -17,20 +17,28 @@ import logging
 import statistics
 from typing import Optional
 
-import spacy
-import textstat
-
 logger = logging.getLogger(__name__)
 
-# Load spaCy model at module level for reuse
-try:
-    nlp = spacy.load("en_core_web_sm")
-except OSError:
-    logger.warning(
-        "spaCy en_core_web_sm model not found. "
-        "Run: python -m spacy download en_core_web_sm"
-    )
-    nlp = None
+# Lazy-loaded spaCy model (avoids slow import at startup on NTFS/WSL2)
+_nlp = None
+_nlp_loaded = False
+
+
+def _get_nlp():
+    """Lazy-load spaCy and the en_core_web_sm model on first use."""
+    global _nlp, _nlp_loaded
+    if not _nlp_loaded:
+        _nlp_loaded = True
+        try:
+            import spacy
+            _nlp = spacy.load("en_core_web_sm")
+        except (OSError, ImportError):
+            logger.warning(
+                "spaCy en_core_web_sm model not found. "
+                "Run: python -m spacy download en_core_web_sm"
+            )
+            _nlp = None
+    return _nlp
 
 # Feature names for the 9-feature stylometric vector
 FEATURE_NAMES = (
@@ -87,6 +95,7 @@ def extract_stylometric_features(text: str) -> dict[str, float]:
     if not text or not text.strip():
         return zeros
 
+    nlp = _get_nlp()
     if nlp is None:
         logger.error("spaCy model not loaded, returning zeros")
         return zeros
@@ -125,7 +134,8 @@ def extract_stylometric_features(text: str) -> dict[str, float]:
     verb_ratio = verb_count / word_count if word_count > 0 else 0.0
     adj_ratio = adj_count / word_count if word_count > 0 else 0.0
 
-    # textstat metrics
+    # textstat metrics (lazy import)
+    import textstat
     flesch = textstat.flesch_reading_ease(text)
     avg_syll = textstat.avg_syllables_per_word(text)
 

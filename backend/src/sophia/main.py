@@ -25,7 +25,15 @@ async def lifespan(app: FastAPI):
     and register the Telegram notification channel.
     """
     # Start APScheduler with separate unencrypted SQLite job store
-    scheduler = create_scheduler()
+    # Use same data directory as main DB, but unencrypted (APScheduler incompatible with SQLCipher)
+    from sophia.config import get_settings
+    import os
+
+    settings = get_settings()
+    scheduler_dir = os.path.dirname(settings.db_path)
+    os.makedirs(scheduler_dir, exist_ok=True)
+    scheduler_db_url = f"sqlite:///{scheduler_dir}/scheduler.db"
+    scheduler = create_scheduler(scheduler_db_url)
     scheduler.start()
 
     # Register stale content monitor (runs every 30 min)
