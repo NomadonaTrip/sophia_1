@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
+    # Social platform credentials
+    facebook_access_token: str = ""
+    facebook_page_id: str = ""
+    instagram_access_token: str = ""
+    instagram_business_account_id: str = ""
+    facebook_app_id: str = ""
+    facebook_app_secret: str = ""
+
     # Web / API
     base_url: str = "http://localhost:8000"
 

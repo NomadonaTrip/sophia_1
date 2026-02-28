@@ -1,13 +1,13 @@
 """Sophia FastAPI application assembly.
 
-Wires routers, DB dependencies, lifespan management (APScheduler),
-and CORS middleware.
+Wires routers, DB dependencies, lifespan management (APScheduler,
+Telegram bot), and CORS middleware.
 Run: uvicorn sophia.main:app --reload
 """
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from sophia.approval.router import approval_router, events_router
@@ -19,10 +19,10 @@ from sophia.research.router import router as research_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan: start/stop APScheduler, register periodic jobs.
+    """Application lifespan: start/stop APScheduler and Telegram bot.
 
-    Plan 04-05 will extend this to also start/stop the Telegram bot
-    and register the Telegram notification channel.
+    - APScheduler: separate unencrypted SQLite job store (SQLCipher incompatible)
+    - Telegram bot: webhook mode, registered as notification channel
     """
     # Start APScheduler with separate unencrypted SQLite job store
     # Use same data directory as main DB, but unencrypted (APScheduler incompatible with SQLCipher)
@@ -42,7 +42,85 @@ async def lifespan(app: FastAPI):
 
     app.state.scheduler = scheduler
 
+    # Initialize Telegram bot if token configured
+    if settings.telegram_bot_token:
+        from sophia.telegram.bot import build_telegram_app
+        from sophia.publishing.notifications import notification_service
+
+        # Lazy-import session factory to avoid slow NTFS imports at startup
+        def _session_factory():
+            from sophia.db.engine import SessionLocal
+            return SessionLocal()
+
+        tg_app = await build_telegram_app(
+            token=settings.telegram_bot_token,
+            webhook_url=f"{settings.base_url}/api/telegram/webhook",
+            session_factory=_session_factory,
+        )
+        await tg_app.initialize()
+        await tg_app.start()
+
+        # Store scheduler reference in bot_data for /resume command
+        tg_app.bot_data["scheduler"] = scheduler
+
+        app.state.telegram = tg_app
+
+        # Register Telegram as a notification channel for publish events
+        async def telegram_notification_handler(event_type: str, data: dict):
+            """Forward publishing events to Telegram operator chat."""
+            chat_id = settings.telegram_chat_id
+            if not chat_id:
+                return
+            bot = tg_app.bot
+            if event_type == "publish_complete":
+                text = (
+                    f"Published! {data.get('platform', '').title()}\n"
+                    f"{data.get('platform_url', '')}"
+                )
+                # Include a "Recover" inline button on publish confirmations
+                from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+
+                keyboard = [
+                    [
+                        InlineKeyboardButton(
+                            "Recover",
+                            callback_data=f"recover_{data['draft_id']}",
+                        )
+                    ]
+                ]
+                await bot.send_message(
+                    chat_id=chat_id,
+                    text=text,
+                    reply_markup=InlineKeyboardMarkup(keyboard),
+                )
+            elif event_type == "publish_failed":
+                text = (
+                    f"Publishing FAILED for draft #{data.get('draft_id')}: "
+                    f"{data.get('error', 'unknown')}"
+                )
+                await bot.send_message(chat_id=chat_id, text=text)
+            elif event_type == "recovery_complete":
+                text = (
+                    f"Recovery {data.get('status', '')} for "
+                    f"{data.get('platform', '').title()} post "
+                    f"(draft #{data.get('draft_id')})"
+                )
+                await bot.send_message(chat_id=chat_id, text=text)
+            elif event_type == "content_stale":
+                text = (
+                    f"Content stale: draft #{data.get('draft_id')} "
+                    f"has been in review for {data.get('hours_stale', '?')} hours"
+                )
+                await bot.send_message(chat_id=chat_id, text=text)
+
+        notification_service.register_channel(telegram_notification_handler)
+
     yield
+
+    # Shutdown Telegram bot
+    if hasattr(app.state, "telegram"):
+        await app.state.telegram.stop()
+        await app.state.telegram.shutdown()
 
     # Shutdown APScheduler
     app.state.scheduler.shutdown(wait=False)
@@ -64,6 +142,22 @@ app.include_router(approval_router)
 app.include_router(events_router)
 app.include_router(content_router)
 app.include_router(research_router)
+
+
+# Telegram webhook endpoint
+@app.post("/api/telegram/webhook")
+async def telegram_webhook(request: Request):
+    """Receive Telegram updates via webhook."""
+    if not hasattr(request.app.state, "telegram"):
+        raise HTTPException(503, "Telegram bot not configured")
+
+    from telegram import Update
+
+    json_data = await request.json()
+    update = Update.de_json(json_data, request.app.state.telegram.bot)
+    await request.app.state.telegram.process_update(update)
+    return {"ok": True}
+
 
 # DB dependency wiring happens here in production
 # For now, routers use placeholder _get_db() that raises NotImplementedError

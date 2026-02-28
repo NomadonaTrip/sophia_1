@@ -25,6 +25,7 @@ dependencies = [
     "sqlcipher3>=0.6.2",
     "structlog>=25.5.0",
     "tantivy>=0.25.1",
+    "python-telegram-bot>=22.6",
     "textstat>=0.7.13",
     "transformers<5.0",
 ]
