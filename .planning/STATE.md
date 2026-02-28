@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 04-06-PLAN.md (gap closure - image upload wiring + stale monitor)
-last_updated: "2026-02-28T07:50:40.374Z"
+stopped_at: Completed 05-01-PLAN.md (analytics data foundation)
+last_updated: "2026-02-28T13:00:39Z"
 progress:
   total_phases: 6
   completed_phases: 4
   total_plans: 20
-  completed_plans: 17
+  completed_plans: 18
 ---
 
 # Project State: Sophia
@@ -19,14 +19,14 @@ progress:
 See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Core value:** Every piece of content is informed, not invented -- grounded in current research, stored client intelligence, and the client's voice profile.
-**Current focus:** Phase 4 -- Approval & Publishing Workflow
+**Current focus:** Phase 5 -- Performance, Analytics & Evaluation
 
 ## Current Phase
 
-**Phase 4: Approval & Publishing Workflow**
-- Status: Complete
-- Current Plan: 6/6
-- Plans: 6/6 complete
+**Phase 5: Performance, Analytics & Evaluation**
+- Status: In Progress
+- Current Plan: 2/3
+- Plans: 1/3 complete
 
 ## Milestone Progress
 
@@ -36,10 +36,10 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
 | 4 | ● | 6/6 | 100% |
-| 5 | ○ | 0/3 | 0% |
+| 5 | ◐ | 1/3 | 33% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: ████████░░ 77%
+Progress: █████████░ 82%
 
 ## Decision Log
 
@@ -115,6 +115,10 @@ Progress: ████████░░ 77%
 | 2026-02-28 | Social platform credentials in Settings | Phase 04-05: facebook/instagram tokens for future MCP server wiring |
 | 2026-02-28 | Shared _session_factory defined once in lifespan | Phase 04-06: reused by stale monitor and Telegram bot, eliminates duplication |
 | 2026-02-28 | getattr fallback for draft.image_url in scheduler | Phase 04-06: backward compatibility during migration |
+| 2026-02-28 | Portfolio route before parameterized {client_id} routes | Phase 05-01: prevents FastAPI matching "portfolio" as integer client_id |
+| 2026-02-28 | Router _get_db wired directly with lazy SessionLocal | Phase 05-01: matches approval router pattern, not placeholder |
+| 2026-02-28 | APScheduler cron with asyncio.run() sync wrapper | Phase 05-01: async-in-sync bridge for daily metric pull job |
+| 2026-02-28 | Reaction breakdown dicts flattened to separate metric rows | Phase 05-01: enables per-reaction-type queries on EngagementMetric |
 
 ## Performance Metrics
 
@@ -136,12 +140,13 @@ Progress: ████████░░ 77%
 | 04-04 | 25min | 3 | 28 |
 | 04-05 | 16min | 2 | 13 |
 | 04-06 | 11min | 2 | 6 |
+| 05-01 | 9min | 2 | 14 |
 
 ## Last Session
 
-**Stopped at:** Completed 04-06-PLAN.md (gap closure - image upload wiring + stale monitor)
-**Resume with:** Phase 5 Plan 05-01 (first plan of monitoring/analytics phase)
-**Resume file:** .planning/phases/05-*/05-01-PLAN.md
+**Stopped at:** Completed 05-01-PLAN.md (analytics data foundation)
+**Resume with:** Phase 5 Plan 05-02 (KPI computation, trend analysis, anomaly detection)
+**Resume file:** .planning/phases/05-*/05-02-PLAN.md
 
 ---
-*Last updated: 2026-02-28 after 04-06-PLAN.md execution*
+*Last updated: 2026-02-28 after 05-01-PLAN.md execution*
