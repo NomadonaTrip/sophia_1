@@ -124,8 +124,8 @@ Plans:
 **Plans**: 3 plans across 2 waves
 
 Plans:
-- [ ] 06-01: Learning Persistence, Scheduling & Briefings (Wave 1) [LRNG-01..07]
-- [ ] 06-02: Capability Discovery & Registry (Wave 1) [CPBL-01..05]
+- [x] 06-01: Learning Persistence, Scheduling & Briefings (Wave 1) [LRNG-01..07]
+- [x] 06-02: Capability Discovery & Registry (Wave 1) [CPBL-01..05]
 - [ ] 06-03: Client Email Notifications & Value Signals (Wave 2, depends on 06-01) [COMM-01..03]
 
 ## Progress
@@ -140,4 +140,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 3. Content Generation & Quality Gates | 4/4 | Complete | 2026-02-27 |
 | 4. Approval, Publishing & Recovery | 6/6 | Complete | 2026-02-28 |
 | 5. Performance Analytics & Evaluation | 4/4 | Complete | 2026-02-28 |
-| 6. Learning, Evolution & Client Communication | 0/2 | Not started | - |
+| 6. Learning, Evolution & Client Communication | 2/3 | In progress | - |
