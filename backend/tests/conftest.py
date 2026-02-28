@@ -53,6 +53,17 @@ from sophia.analytics.models import (  # noqa: F401 -- ensure models registered
     IndustryBenchmark,
     KPISnapshot,
 )
+from sophia.agent.models import (  # noqa: F401 -- ensure models registered
+    Briefing,
+    BusinessInsight,
+    Learning,
+)
+from sophia.capabilities.models import (  # noqa: F401 -- ensure models registered
+    CapabilityGap,
+    CapabilityProposal,
+    CapabilityRegistry,
+    DiscoveredCapability,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 

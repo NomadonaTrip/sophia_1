@@ -51,6 +51,11 @@ async def lifespan(app: FastAPI):
 
     register_daily_metric_pull(scheduler, _session_factory, settings)
 
+    # Register agent scheduled jobs (daily standup, weekly briefing, etc.)
+    from sophia.scheduler.service import register_scheduled_jobs
+
+    register_scheduled_jobs(scheduler, _session_factory)
+
     app.state.scheduler = scheduler
 
     # Initialize Telegram bot if token configured
