@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 04-03-PLAN.md (publishing pipeline and recovery)
-last_updated: "2026-02-27T22:05:25Z"
+stopped_at: Completed 04-04-PLAN.md (frontend approval UI)
+last_updated: "2026-02-28T04:05:38Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 4: Approval & Publishing Workflow**
 - Status: In Progress
-- Current Plan: 4/5
-- Plans: 3/5 complete
+- Current Plan: 5/5
+- Plans: 4/5 complete
 
 ## Milestone Progress
 
@@ -35,11 +35,11 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 1 | ● | 3/3 | 100% |
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
-| 4 | ◐ | 3/5 | 60% |
+| 4 | ◐ | 4/5 | 80% |
 | 5 | ○ | 0/3 | 0% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: █████████░ 87%
+Progress: █████████░ 93%
 
 ## Decision Log
 
@@ -105,6 +105,10 @@ Progress: █████████░ 87%
 | 2026-02-27 | Instagram recovery manual fallback | Phase 04-03: ig-mcp has no delete support, falls back to manual_recovery_needed |
 | 2026-02-27 | Naive datetime comparison for SQLite compatibility | Phase 04-03: SQLCipher strips timezone info from DateTime columns |
 | 2026-02-27 | handle_recovery_command bridges sync CLI to async recovery | Phase 04-03: uses asyncio.run() for sync-to-async bridge |
+| 2026-02-28 | Approval mutations wired to real backend endpoints | Phase 04-04: TanStack Query useMutation with optimistic updates for instant UI feedback |
+| 2026-02-28 | Lazy-loaded spacy in voice_alignment.py | Phase 04-04: prevents 5+ min startup hang on NTFS mounts in WSL2 |
+| 2026-02-28 | Session-level rejection tracking in useApproval hook | Phase 04-04: useState tracks per-client rejection counts for calibration auto-suggest at 3+ |
+| 2026-02-28 | NetworkErrorBanner with exponential backoff retry | Phase 04-04: 2s/4s/8s retry intervals matching CONTEXT.md locked decision |
 
 ## Performance Metrics
 
@@ -123,12 +127,13 @@ Progress: █████████░ 87%
 | 03-04 | 6min | 1 | 2 |
 | 04-01 | 8min | 2 | 15 |
 | 04-03 | 9min | 2 | 12 |
+| 04-04 | 25min | 3 | 28 |
 
 ## Last Session
 
-**Stopped at:** Completed 04-03-PLAN.md (publishing pipeline and recovery protocol)
-**Resume with:** Phase 4 Plan 04-04 (approval UI frontend)
-**Resume file:** .planning/phases/04-*/04-04-PLAN.md
+**Stopped at:** Completed 04-04-PLAN.md (frontend approval UI)
+**Resume with:** Phase 4 Plan 04-05 (Telegram bot + browser voice input)
+**Resume file:** .planning/phases/04-*/04-05-PLAN.md
 
 ---
-*Last updated: 2026-02-27 after 04-03-PLAN.md execution*
+*Last updated: 2026-02-28 after 04-04-PLAN.md execution*

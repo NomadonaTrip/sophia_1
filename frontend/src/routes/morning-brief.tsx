@@ -63,6 +63,19 @@ const DEMO_DRAFTS: Record<number, ContentDraft[]> = {
       status: 'in_review',
       hashtags: ['HamiltonLandscaping', 'GardenDesign', 'BeforeAfter'],
     },
+    {
+      id: 203,
+      client_id: 2,
+      client_name: "Shane's Landscaping",
+      platform: 'facebook',
+      copy: "Happy to share this backyard patio project we finished last week in Dundas. Natural flagstone, built-in seating, and low-voltage lighting for those summer evenings.",
+      image_prompt: "Completed flagstone patio at dusk with warm low-voltage lighting",
+      voice_alignment_pct: 89,
+      research_source_count: 2,
+      content_pillar: 'Portfolio',
+      scheduled_time: 'Fri 9:00 AM',
+      status: 'published',
+    },
   ],
 }
 

@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import { ClientDetailPanel } from '@/components/client/ClientDetailPanel'
 import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid'
+import { RecoveryDialog } from '@/components/approval/RecoveryDialog'
 import type { ClientData } from '@/components/portfolio/ClientTile'
 import type { ContentDraft } from '@/components/approval/ContentItem'
 
@@ -33,13 +34,28 @@ const DEMO_DRAFTS: ContentDraft[] = [
       originality: { passed: true, score: 0.91 },
     },
   },
+  {
+    id: 203,
+    client_id: 2,
+    client_name: "Shane's Landscaping",
+    platform: 'facebook',
+    copy: "Happy to share this backyard patio project we finished last week in Dundas. Natural flagstone, built-in seating, and low-voltage lighting for those summer evenings.",
+    image_prompt: "Completed flagstone patio at dusk with warm low-voltage lighting",
+    voice_alignment_pct: 89,
+    research_source_count: 2,
+    content_pillar: 'Portfolio',
+    scheduled_time: 'Fri 9:00 AM',
+    status: 'published',
+  },
 ]
 
 export function ClientDrillDown() {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
+  const [recoveryDraftId, setRecoveryDraftId] = useState<number | null>(null)
 
   const selectedClient = DEMO_CLIENTS.find((c) => c.id === selectedClientId) ?? null
   const clientDrafts = selectedClientId ? DEMO_DRAFTS.filter((d) => d.client_id === selectedClientId) : []
+  const recoveryDraft = recoveryDraftId ? DEMO_DRAFTS.find((d) => d.id === recoveryDraftId) : null
 
   const handleClientSelect = useCallback((clientId: number) => {
     setSelectedClientId((prev) => (prev === clientId ? null : clientId))
@@ -78,8 +94,21 @@ export function ClientDrillDown() {
         onReject={(id, tags, guidance) => console.log('Reject:', id, tags, guidance)}
         onEdit={(id, copy) => console.log('Edit:', id, copy)}
         onUploadImage={(id, file) => console.log('Upload:', id, file.name)}
-        onRecover={(id) => console.log('Recover:', id)}
+        onRecover={(id) => setRecoveryDraftId(id)}
       />
+
+      {recoveryDraft && (
+        <RecoveryDialog
+          draftId={recoveryDraft.id}
+          clientName={recoveryDraft.client_name}
+          platform={recoveryDraft.platform}
+          onSubmit={(id, reason, urgency) => {
+            console.log('Recovery submitted:', { id, reason, urgency })
+            setRecoveryDraftId(null)
+          }}
+          onClose={() => setRecoveryDraftId(null)}
+        />
+      )}
     </div>
   )
 }
