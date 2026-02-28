@@ -108,11 +108,12 @@ class DecisionTraceResponse(BaseModel):
 class AnalyticsSummaryResponse(BaseModel):
     """Composite analytics summary for a client.
 
-    Combines KPI snapshot, trends, anomalies, and AI commentary.
-    Trends and anomalies are stubbed until Plan 05-02 computation.
+    Combines KPI snapshot, trends, anomalies, benchmark comparison,
+    and AI commentary.
     """
 
     kpis: Optional[KPISnapshotResponse] = None
     trends: list[dict] = []
     anomalies: list[dict] = []
     commentary: str = ""
+    benchmark: dict = {}

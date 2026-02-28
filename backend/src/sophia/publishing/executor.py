@@ -111,6 +111,26 @@ async def execute_publish(
             draft.published_at = datetime.now(timezone.utc)
             db.flush()
 
+            # Capture performance decision trace (optional analytics)
+            try:
+                from sophia.analytics.decision_trace import capture_decision
+                predicted = {}
+                if getattr(draft, "voice_confidence_pct", None):
+                    predicted["approval_first_pass"] = draft.voice_confidence_pct / 100.0
+                if getattr(draft, "rank_reasoning", None):
+                    predicted["rank_reasoning"] = draft.rank_reasoning
+                capture_decision(
+                    db=db,
+                    draft_id=draft_id,
+                    client_id=draft.client_id,
+                    stage="performance",
+                    decision=f"Published to {platform}",
+                    evidence={"platform_post_id": result.get("post_id", "")},
+                    predicted_outcome=predicted if predicted else None,
+                )
+            except (ImportError, Exception):
+                pass  # Analytics module not yet available
+
             # Broadcast success event
             await notify_publish_complete(draft, result.get("url", ""))
 

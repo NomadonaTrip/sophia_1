@@ -156,6 +156,14 @@ def run_pipeline(
             summary_badge=f"Rejected ({gate_name})",
         )
         _persist_gate_results(db, draft, report)
+
+        # Capture gate decision trace for rejection (optional analytics integration)
+        try:
+            from sophia.analytics.decision_trace import capture_gate_decision
+            capture_gate_decision(db, draft, report.to_dict())
+        except ImportError:
+            pass
+
         return report
 
     # All gates passed
@@ -177,6 +185,14 @@ def run_pipeline(
         summary_badge=badge,
     )
     _persist_gate_results(db, draft, report)
+
+    # Capture gate decision trace (optional analytics integration)
+    try:
+        from sophia.analytics.decision_trace import capture_gate_decision
+        capture_gate_decision(db, draft, report.to_dict())
+    except ImportError:
+        pass
+
     return report
 
 

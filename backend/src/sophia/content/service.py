@@ -81,6 +81,14 @@ def generate_content_batch(
     approved_posts = _get_approved_posts(db, client_id, limit=30)
     few_shot_examples = approved_posts[:5]  # Most recent 5 for few-shot
 
+    # Step 3b: Enrich generation context with decision quality feedback (if available)
+    decision_quality_ctx: dict = {}
+    try:
+        from sophia.analytics.decision_trace import get_decision_quality_context
+        decision_quality_ctx = get_decision_quality_context(db, client_id)
+    except ImportError:
+        pass  # Analytics module not yet available (graceful degradation)
+
     # Step 4: Build prompts
     client_config = _build_client_config(intelligence)
     prompts = build_batch_prompts(
@@ -236,6 +244,18 @@ def generate_content_batch(
     # Refresh to get IDs
     for draft in all_drafts:
         db.refresh(draft)
+
+    # Step 11: Capture decision traces for generated drafts
+    try:
+        from sophia.analytics.decision_trace import capture_generation_decisions
+        for draft in active_drafts:
+            capture_generation_decisions(db, draft, {
+                "research_ids": [r.id for r in research] if hasattr(research[0], "id") else [],
+                "decision_quality": decision_quality_ctx,
+            })
+        db.flush()
+    except (ImportError, Exception):
+        pass  # Analytics module not yet available (graceful degradation)
 
     # Return only non-rejected drafts (operator never sees rejected in queue)
     return active_drafts

@@ -24,6 +24,7 @@ from sophia.analytics.schemas import (
     AnalyticsSummaryResponse,
     CampaignResponse,
     ConversionEventCreate,
+    DecisionTraceResponse,
     EngagementMetricResponse,
     KPISnapshotResponse,
 )
@@ -117,10 +118,16 @@ def get_client_summary(
 ):
     """Get analytics summary for a client.
 
-    Returns latest KPI snapshot with raw metrics. Trends, anomalies,
-    and AI commentary are stubbed until Plan 05-02 computation.
+    Computes weekly KPIs, benchmark comparison, and KPI trends.
+    Returns structured AnalyticsSummaryResponse.
     """
-    # Get latest KPI snapshot
+    from sophia.analytics.kpi import (
+        compare_to_benchmark,
+        compute_kpi_trends,
+        compute_weekly_kpis,
+    )
+
+    # Get or compute latest KPI snapshot
     latest_kpi = (
         db.query(KPISnapshot)
         .filter_by(client_id=client_id)
@@ -128,15 +135,34 @@ def get_client_summary(
         .first()
     )
 
-    kpi_response = None
-    if latest_kpi:
-        kpi_response = KPISnapshotResponse.model_validate(latest_kpi)
+    # If no snapshot exists, compute one for the current week
+    if not latest_kpi:
+        today = date.today()
+        latest_kpi = compute_weekly_kpis(db, client_id, today)
+
+    kpi_response = KPISnapshotResponse.model_validate(latest_kpi)
+
+    # Benchmark comparison
+    benchmark = compare_to_benchmark(db, client_id, latest_kpi)
+
+    # KPI trends (last 4 weeks)
+    trends = compute_kpi_trends(db, client_id, weeks=4)
+    trend_data = [
+        {
+            "week_end": t.week_end.isoformat(),
+            "engagement_rate": t.engagement_rate,
+            "reach_growth_pct": t.reach_growth_pct,
+            "follower_growth_pct": t.follower_growth_pct,
+        }
+        for t in trends
+    ]
 
     return AnalyticsSummaryResponse(
         kpis=kpi_response,
-        trends=[],  # Stubbed for Plan 05-02
-        anomalies=[],  # Stubbed for Plan 05-02
-        commentary="",  # Stubbed for Plan 05-02
+        trends=trend_data,
+        anomalies=[],  # Populated by detect_client_anomalies in briefing
+        commentary="",
+        benchmark=benchmark,
     )
 
 
@@ -194,3 +220,103 @@ def get_client_campaigns(
         results.append(response)
 
     return results
+
+
+@analytics_router.get("/{client_id}/posting-times")
+def get_posting_time_performance(
+    client_id: int,
+    platform: str = Query("instagram"),
+    db: Session = Depends(_get_db),
+):
+    """Get average engagement rate per posting hour for heatmap display."""
+    from sophia.analytics.kpi import compute_posting_time_performance
+
+    return compute_posting_time_performance(db, client_id, platform)
+
+
+@analytics_router.post("/{client_id}/campaigns/group")
+def trigger_campaign_grouping(
+    client_id: int,
+    db: Session = Depends(_get_db),
+):
+    """Trigger auto-grouping of ungrouped drafts into campaigns."""
+    from sophia.analytics.campaigns import auto_group_campaigns
+
+    campaigns = auto_group_campaigns(db, client_id)
+    return {
+        "campaigns_created": len(campaigns),
+        "campaigns": [
+            {"id": c.id, "name": c.name, "slug": c.slug}
+            for c in campaigns
+        ],
+    }
+
+
+# -- Decision trace endpoints -------------------------------------------------
+
+
+@analytics_router.get(
+    "/{client_id}/decisions",
+    response_model=list[DecisionTraceResponse],
+)
+def get_decision_traces(
+    client_id: int,
+    draft_id: Optional[int] = Query(None),
+    stage: Optional[str] = Query(None),
+    limit: int = Query(50, le=200),
+    db: Session = Depends(_get_db),
+):
+    """List decision traces for a client with optional filters."""
+    from sophia.analytics.models import DecisionTrace
+
+    query = db.query(DecisionTrace).filter_by(client_id=client_id)
+
+    if draft_id is not None:
+        query = query.filter(DecisionTrace.content_draft_id == draft_id)
+    if stage:
+        query = query.filter(DecisionTrace.stage == stage)
+
+    return (
+        query.order_by(DecisionTrace.id.desc())
+        .limit(limit)
+        .all()
+    )
+
+
+@analytics_router.get("/{client_id}/decision-quality")
+def get_decision_quality(
+    client_id: int,
+    db: Session = Depends(_get_db),
+):
+    """Get decision quality scores for a client."""
+    from sophia.analytics.decision_trace import get_decision_quality_context
+
+    context = get_decision_quality_context(db, client_id)
+    return context or {"decision_quality": {}, "guidance": ""}
+
+
+@analytics_router.post("/{client_id}/attribute-outcomes")
+def trigger_outcome_attribution(
+    client_id: int,
+    db: Session = Depends(_get_db),
+):
+    """Trigger outcome attribution batch for a client."""
+    from sophia.analytics.decision_trace import attribute_batch
+
+    count = attribute_batch(db, client_id)
+    return {"traces_updated": count}
+
+
+@analytics_router.get("/{client_id}/decision-context")
+def get_decision_context(
+    client_id: int,
+    db: Session = Depends(_get_db),
+):
+    """Get decision quality context for content generation.
+
+    Returns structured quality feedback suitable for injection into
+    generation prompts.
+    """
+    from sophia.analytics.decision_trace import get_decision_quality_context
+
+    return get_decision_quality_context(db, client_id) or {}

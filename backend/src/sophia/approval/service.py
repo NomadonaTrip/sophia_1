@@ -86,6 +86,13 @@ def transition_draft(
     db.add(audit)
     db.flush()
 
+    # Capture approval decision trace (optional analytics integration)
+    try:
+        from sophia.analytics.decision_trace import capture_approval_decision
+        capture_approval_decision(db, draft.id, draft.client_id, new_status, actor)
+    except ImportError:
+        pass
+
     return draft
 
 
