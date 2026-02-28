@@ -18,6 +18,7 @@ import { ChatMessageArea, type ChatMessage } from '@/components/chat/ChatMessage
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { NetworkErrorBanner } from '@/components/approval/NetworkErrorBanner'
 import { StaleContentToastContainer } from '@/components/approval/StaleContentToast'
+import { VoiceToastContainer } from '@/components/voice/VoiceToast'
 import { useSSE } from '@/hooks/useSSE'
 
 const NAV_TABS = [
@@ -129,6 +130,9 @@ export function Layout() {
 
       {/* Stale content toast overlay */}
       <StaleContentToastContainer />
+
+      {/* Voice command feedback toast */}
+      <VoiceToastContainer />
 
       {/* Health strip */}
       <HealthStrip

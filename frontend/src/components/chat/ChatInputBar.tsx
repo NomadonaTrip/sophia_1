@@ -1,25 +1,92 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { ArrowUp, Mic, Square } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useVoiceInput } from '@/hooks/useVoiceInput'
+import type { VoiceResult } from '@/hooks/useVoiceInput'
+import { parseVoiceCommand } from '@/components/voice/VoiceCommandParser'
+import { showVoiceToast } from '@/components/voice/VoiceToast'
+
+interface VoiceCommandCallbacks {
+  onApprove?: () => void
+  onReject?: (guidance?: string) => void
+  onSkip?: () => void
+  onNavigate?: (target: string) => void
+}
 
 interface ChatInputBarProps {
   onSend: (message: string) => void
   isThinking?: boolean
   thinkingText?: string
-  onMicStart?: () => void
-  onMicStop?: () => void
-  isRecording?: boolean
+  /** Voice command callbacks for approval actions */
+  voiceCommands?: VoiceCommandCallbacks
 }
 
 export function ChatInputBar({
   onSend,
   isThinking = false,
   thinkingText,
-  onMicStart,
-  onMicStop,
-  isRecording = false,
+  voiceCommands,
 }: ChatInputBarProps) {
   const [message, setMessage] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Voice input hook -- handles SpeechRecognition lifecycle
+  const handleVoiceResult = useCallback(
+    (result: VoiceResult) => {
+      const command = parseVoiceCommand(result.transcript)
+
+      switch (command.action) {
+        case 'approve':
+          voiceCommands?.onApprove?.()
+          showVoiceToast('Approved via voice', 'success')
+          break
+
+        case 'reject':
+          if (command.confirmation) {
+            // Destructive action: show confirmation toast, then execute
+            showVoiceToast(
+              `Reject with: "${command.guidance}"? (click Reject to confirm)`,
+              'confirm',
+            )
+            // Pre-populate rejection guidance for manual confirmation
+            voiceCommands?.onReject?.(command.guidance)
+          } else {
+            // Edit guidance (e.g. "make it shorter") -- treat as rejection with guidance
+            voiceCommands?.onReject?.(command.guidance)
+            showVoiceToast(
+              `Feedback: "${command.guidance}"`,
+              'info',
+            )
+          }
+          break
+
+        case 'skip':
+          voiceCommands?.onSkip?.()
+          showVoiceToast('Skipped via voice', 'info')
+          break
+
+        case 'navigate':
+          if (command.target) {
+            voiceCommands?.onNavigate?.(command.target)
+            showVoiceToast(`Navigating to: ${command.target}`, 'info')
+          }
+          break
+
+        case 'unknown':
+        default:
+          // Populate text input with transcript for manual review
+          setMessage(result.transcript)
+          showVoiceToast(`Heard: "${result.transcript}"`, 'info')
+          // Focus the input so the user can edit and send
+          inputRef.current?.focus()
+          break
+      }
+    },
+    [voiceCommands],
+  )
+
+  const { isListening, isSupported, startListening, stopListening } =
+    useVoiceInput(handleVoiceResult)
 
   const handleSend = useCallback(() => {
     const trimmed = message.trim()
@@ -40,12 +107,51 @@ export function ChatInputBar({
   )
 
   const handleMicToggle = useCallback(() => {
-    if (isRecording) {
-      onMicStop?.()
+    if (isListening) {
+      stopListening()
     } else {
-      onMicStart?.()
+      startListening()
     }
-  }, [isRecording, onMicStart, onMicStop])
+  }, [isListening, startListening, stopListening])
+
+  // Keyboard hotkey: hold Space when input not focused to activate mic
+  useEffect(() => {
+    if (!isSupported) return
+
+    function handleGlobalKeyDown(e: KeyboardEvent) {
+      // Only activate when no input/textarea is focused
+      const active = document.activeElement
+      if (active) {
+        const tag = active.tagName.toLowerCase()
+        if (
+          tag === 'input' ||
+          tag === 'textarea' ||
+          tag === 'select' ||
+          (active as HTMLElement).isContentEditable
+        ) {
+          return
+        }
+      }
+
+      if (e.code === 'Space' && !e.repeat) {
+        e.preventDefault()
+        startListening()
+      }
+    }
+
+    function handleGlobalKeyUp(e: KeyboardEvent) {
+      if (e.code === 'Space') {
+        stopListening()
+      }
+    }
+
+    document.addEventListener('keydown', handleGlobalKeyDown)
+    document.addEventListener('keyup', handleGlobalKeyUp)
+    return () => {
+      document.removeEventListener('keydown', handleGlobalKeyDown)
+      document.removeEventListener('keyup', handleGlobalKeyUp)
+    }
+  }, [isSupported, startListening, stopListening])
 
   const canSend = message.trim().length > 0
 
@@ -68,27 +174,30 @@ export function ChatInputBar({
         aria-label="Message Sophia"
       >
         <div className="mx-auto w-[60%] flex items-center gap-2 px-3 py-2.5">
-          {/* Mic button */}
-          <button
-            type="button"
-            onClick={handleMicToggle}
-            className={cn(
-              'flex-none flex items-center justify-center h-9 w-9 rounded-md transition-colors',
-              isRecording
-                ? 'bg-sage-500/20 text-sage-300 sage-dot-pulse'
-                : 'bg-midnight-700 text-text-muted hover:text-sage-300 hover:bg-midnight-600',
-            )}
-            aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-          >
-            {isRecording ? (
-              <Square className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
-          </button>
+          {/* Mic button -- hidden if browser doesn't support Web Speech API */}
+          {isSupported && (
+            <button
+              type="button"
+              onClick={handleMicToggle}
+              className={cn(
+                'flex-none flex items-center justify-center h-9 w-9 rounded-md transition-colors',
+                isListening
+                  ? 'bg-sage-500/20 text-sage-300 sage-dot-pulse'
+                  : 'bg-midnight-700 text-text-muted hover:text-sage-300 hover:bg-midnight-600',
+              )}
+              aria-label={isListening ? 'Stop recording' : 'Start recording'}
+            >
+              {isListening ? (
+                <Square className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
+              )}
+            </button>
+          )}
 
           {/* Text input */}
           <input
+            ref={inputRef}
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
