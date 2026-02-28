@@ -255,7 +255,7 @@ def compare_to_benchmark(
     """
     from sophia.intelligence.models import Client
 
-    client = db.query(Client).get(client_id)
+    client = db.get(Client, client_id)
     if not client or not client.industry_vertical:
         return {}
 

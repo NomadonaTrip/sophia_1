@@ -242,7 +242,7 @@ class TestLogConversionEvent:
         assert event.source == "operator_reported"
         assert event.details == {"channel": "phone"}
 
-        found = db_session.query(ConversionEvent).get(event.id)
+        found = db_session.get(ConversionEvent, event.id)
         assert found is not None
 
     def test_invalid_event_type_raises(self, db_session, sample_client):
