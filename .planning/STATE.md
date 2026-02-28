@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 05-02-PLAN.md (analytics computation layer)
-last_updated: "2026-02-28T13:17:48.924Z"
+stopped_at: Completed 05-04-PLAN.md (UTM publishing pipeline wiring)
+last_updated: "2026-02-28T14:50:00Z"
 progress:
   total_phases: 6
   completed_phases: 5
-  total_plans: 23
-  completed_plans: 20
+  total_plans: 24
+  completed_plans: 21
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 5: Performance, Analytics & Evaluation**
 - Status: Complete
-- Current Plan: 3/3
-- Plans: 3/3 complete
+- Current Plan: 4/4
+- Plans: 4/4 complete
 
 ## Milestone Progress
 
@@ -36,10 +36,10 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 2 | ● | 4/4 | 100% |
 | 3 | ● | 4/4 | 100% |
 | 4 | ● | 6/6 | 100% |
-| 5 | ● | 3/3 | 100% |
+| 5 | ● | 4/4 | 100% |
 | 6 | ○ | 0/2 | 0% |
 
-Progress: █████████░ 91%
+Progress: █████████░ 88%
 
 ## Decision Log
 
@@ -127,6 +127,9 @@ Progress: █████████░ 91%
 | 2026-02-28 | Evidence capped at 5 key-value pairs | Phase 05-03: prevents trace bloat per pitfall #4 from research |
 | 2026-02-28 | Quality ratio capped at 2.0 | Phase 05-03: prevents extreme distortion from over-prediction |
 | 2026-02-28 | try/except ImportError for all pipeline integrations | Phase 05-03: analytics module is optional, existing code works without it |
+| 2026-02-28 | try/except ImportError for UTM import in executor | Phase 05-04: graceful degradation when analytics module unavailable |
+| 2026-02-28 | publish_copy variable separates UTM from DB copy | Phase 05-04: UTM-tagged copy only for dispatch, draft.copy untouched in DB |
+| 2026-02-28 | campaign_slug from content_pillar with 'general' fallback | Phase 05-04: slugified content_pillar or "general" when null/empty |
 
 ## Performance Metrics
 
@@ -151,12 +154,13 @@ Progress: █████████░ 91%
 | 05-01 | 9min | 2 | 14 |
 | 05-02 | 12min | 2 | 13 |
 | 05-03 | 9min | 2 | 12 |
+| 05-04 | 2min | 1 | 2 |
 
 ## Last Session
 
-**Stopped at:** Completed 05-02-PLAN.md (analytics computation layer)
+**Stopped at:** Completed 05-04-PLAN.md (UTM publishing pipeline wiring)
 **Resume with:** Phase 6 Plan 06-01 (Operator Experience and Polish)
 **Resume file:** None
 
 ---
-*Last updated: 2026-02-28 after 05-03-PLAN.md execution*
+*Last updated: 2026-02-28 after 05-04-PLAN.md execution*
