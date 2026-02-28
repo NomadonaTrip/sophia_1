@@ -109,7 +109,7 @@ Plans:
 - [ ] 05-01-PLAN.md — Analytics models, Meta Graph API collector, UTM builder, daily scheduling, analytics router (Wave 1) [ANLY-01, ANLY-03, ANLY-07]
 - [ ] 05-02-PLAN.md — KPI computation, campaign grouping, sentiment, anomaly detection, ICP comparison, SOV, funnel, briefing content (Wave 2, depends on 05-01) [ANLY-02, ANLY-04, ANLY-05, ANLY-06, ANLY-08, ANLY-09]
 - [ ] 05-03-PLAN.md — Decision trace pipeline, outcome attribution, quality evaluation, feedback loop, frontend Recharts components (Wave 2, depends on 05-01) [EVAL-01, EVAL-02, EVAL-03, EVAL-04]
-- [ ] 05-04-PLAN.md — Gap closure: wire UTM injection into publish pipeline (Wave 1, gap closure) [ANLY-07]
+- [x] 05-04-PLAN.md — Gap closure: wire UTM injection into publish pipeline (Wave 1, gap closure) [ANLY-07]
 
 ### Phase 6: Learning, Evolution & Client Communication
 **Goal**: Sophia compounds learnings across cycles, discovers new capabilities, and communicates value to clients
@@ -139,5 +139,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 2. Research & Semantic Intelligence | 4/4 | Complete | 2026-02-27 |
 | 3. Content Generation & Quality Gates | 4/4 | Complete | 2026-02-27 |
 | 4. Approval, Publishing & Recovery | 6/6 | Complete | 2026-02-28 |
-| 5. Performance Analytics & Evaluation | 3/3 | Complete | 2026-02-28 |
+| 5. Performance Analytics & Evaluation | 4/4 | Complete | 2026-02-28 |
 | 6. Learning, Evolution & Client Communication | 0/2 | Not started | - |

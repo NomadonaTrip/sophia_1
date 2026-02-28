@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: milestone
 status: unknown
 stopped_at: Completed 05-04-PLAN.md (UTM publishing pipeline wiring)
-last_updated: "2026-02-28T14:50:00Z"
+last_updated: "2026-02-28T14:55:32.488Z"
 progress:
   total_phases: 6
   completed_phases: 5
