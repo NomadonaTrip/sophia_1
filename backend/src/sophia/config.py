@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     facebook_app_id: str = ""
     facebook_app_secret: str = ""
 
+    # GitHub API (capability discovery)
+    github_token: str = ""
+
     # Web / API
     base_url: str = "http://localhost:8000"
 
