@@ -103,12 +103,12 @@ Plans:
   3. Sophia appends UTM parameters to published links, groups posts into campaigns, and tracks campaign-level and CAC metrics
   4. Sophia persists structured decision traces per content cycle stage and attributes performance outcomes to specific decisions
   5. Sophia evaluates decision quality (predicted vs actual outcomes) and feeds decision quality data into future content decisions
-**Plans**: TBD
+**Plans**: 3 plans across 2 waves
 
 Plans:
-- [ ] 05-01: TBD
-- [ ] 05-02: TBD
-- [ ] 05-03: TBD
+- [ ] 05-01-PLAN.md — Analytics models, Meta Graph API collector, UTM builder, daily scheduling, analytics router (Wave 1) [ANLY-01, ANLY-03, ANLY-07]
+- [ ] 05-02-PLAN.md — KPI computation, campaign grouping, sentiment, anomaly detection, ICP comparison, SOV, funnel, briefing content (Wave 2, depends on 05-01) [ANLY-02, ANLY-04, ANLY-05, ANLY-06, ANLY-08, ANLY-09]
+- [ ] 05-03-PLAN.md — Decision trace pipeline, outcome attribution, quality evaluation, feedback loop, frontend Recharts components (Wave 2, depends on 05-01) [EVAL-01, EVAL-02, EVAL-03, EVAL-04]
 
 ### Phase 6: Learning, Evolution & Client Communication
 **Goal**: Sophia compounds learnings across cycles, discovers new capabilities, and communicates value to clients

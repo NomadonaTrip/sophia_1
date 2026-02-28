@@ -43,6 +43,16 @@ from sophia.approval.models import (  # noqa: F401 -- ensure models registered
     PublishingQueueEntry,
     RecoveryLog,
 )
+from sophia.analytics.models import (  # noqa: F401 -- ensure models registered
+    Campaign,
+    CampaignMembership,
+    ConversionEvent,
+    DecisionQualityScore,
+    DecisionTrace,
+    EngagementMetric,
+    IndustryBenchmark,
+    KPISnapshot,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 
