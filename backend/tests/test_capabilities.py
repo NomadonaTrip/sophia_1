@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from fastapi.testclient import TestClient
 
 from sophia.capabilities.evaluation import (
     AUTO_REJECT_THRESHOLD,
@@ -31,6 +32,13 @@ from sophia.capabilities.search import (
     search_all_sources,
     search_github,
     search_mcp_registry,
+)
+from sophia.capabilities.service import (
+    approve_proposal,
+    log_capability_gap,
+    list_gaps,
+    record_capability_failure,
+    reject_proposal,
 )
 
 
@@ -446,3 +454,467 @@ class TestEvaluation:
     def test_auto_reject_threshold_is_three(self):
         """Auto-reject threshold is 3 (locked decision from CONTEXT.md)."""
         assert AUTO_REJECT_THRESHOLD == 3
+
+
+# =============================================================================
+# Service tests
+# =============================================================================
+
+
+class TestService:
+    """Test capability service layer."""
+
+    def test_log_capability_gap(self, db_session):
+        """log_capability_gap creates a gap with status 'open'."""
+        gap = log_capability_gap(
+            db_session,
+            description="No LinkedIn publishing capability",
+            detected_during="publishing_stage",
+        )
+
+        assert gap.id is not None
+        assert gap.status == "open"
+        assert gap.description == "No LinkedIn publishing capability"
+        assert gap.detected_during == "publishing_stage"
+
+    def test_log_duplicate_gap_returns_existing(self, db_session):
+        """Duplicate gap descriptions return existing gap instead of creating new."""
+        gap1 = log_capability_gap(
+            db_session,
+            description="No Google Business Profile publishing capability",
+            detected_during="publishing_stage",
+        )
+        gap2 = log_capability_gap(
+            db_session,
+            description="No Google Business Profile publishing capability",
+            detected_during="research_stage",
+        )
+
+        assert gap1.id == gap2.id  # Same gap returned
+
+    def test_log_different_gaps_not_duplicate(self, db_session):
+        """Different gap descriptions create separate gaps."""
+        gap1 = log_capability_gap(
+            db_session,
+            description="No LinkedIn publishing capability",
+            detected_during="publishing_stage",
+        )
+        gap2 = log_capability_gap(
+            db_session,
+            description="Need email newsletter integration",
+            detected_during="research_stage",
+        )
+
+        assert gap1.id != gap2.id
+
+    def test_approve_proposal_creates_registry(self, db_session):
+        """Approving a proposal creates a CapabilityRegistry entry and resolves gap."""
+        # Setup: gap + discovered + proposal
+        gap = CapabilityGap(
+            description="Need calendar tool",
+            detected_during="publishing_stage",
+            status=GapStatus.proposals_ready.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="mcp_registry",
+            name="calendar-mcp",
+            description="Calendar MCP server",
+            url="https://github.com/example/calendar",
+            version="1.0.0",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=5,
+            quality_score=4,
+            security_score=4,
+            fit_score=3,
+            composite_score=4.1,
+            recommendation="recommend",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.pending.value,
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        # Approve
+        registry = approve_proposal(
+            db_session, proposal.id, review_notes="Looks good"
+        )
+
+        assert registry.id is not None
+        assert registry.name == "calendar-mcp"
+        assert registry.source == "mcp_registry"
+        assert registry.status == "active"
+
+        # Check proposal updated
+        assert proposal.status == "approved"
+        assert proposal.reviewed_at is not None
+        assert proposal.review_notes == "Looks good"
+
+        # Check gap resolved
+        assert gap.status == "resolved"
+        assert gap.resolved_by_id == registry.id
+
+    def test_reject_proposal_requires_notes(self, db_session):
+        """Rejecting a proposal updates status and stores review notes."""
+        gap = CapabilityGap(
+            description="Need slack integration",
+            detected_during="publishing_stage",
+            status=GapStatus.proposals_ready.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="github",
+            name="slack-mcp",
+            description="Slack MCP",
+            url="https://github.com/example/slack",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=3,
+            quality_score=3,
+            security_score=3,
+            fit_score=3,
+            composite_score=3.0,
+            recommendation="neutral",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.pending.value,
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        result = reject_proposal(
+            db_session, proposal.id, review_notes="Not needed right now"
+        )
+
+        assert result.status == "rejected"
+        assert result.reviewed_at is not None
+        assert result.review_notes == "Not needed right now"
+
+    def test_approve_already_approved_raises(self, db_session):
+        """Approving an already-approved proposal raises ValueError."""
+        gap = CapabilityGap(
+            description="Need something",
+            detected_during="testing",
+            status=GapStatus.proposals_ready.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="github",
+            name="test-tool",
+            description="Test tool",
+            url="https://github.com/test/tool",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=4,
+            quality_score=4,
+            security_score=4,
+            fit_score=4,
+            composite_score=4.0,
+            recommendation="recommend",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.approved.value,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        with pytest.raises(ValueError, match="expected 'pending'"):
+            approve_proposal(db_session, proposal.id)
+
+    def test_record_capability_failure_increments(self, db_session):
+        """record_capability_failure increments count and auto-disables at threshold."""
+        entry = CapabilityRegistry(
+            name="fragile-server",
+            description="A fragile server",
+            source="github",
+            source_url="https://github.com/example/fragile",
+            installed_at=datetime.now(timezone.utc),
+            status=CapabilityStatus.active.value,
+            failure_count=0,
+            auto_disable_threshold=3,
+        )
+        db_session.add(entry)
+        db_session.flush()
+
+        # First failure
+        result = record_capability_failure(db_session, entry.id)
+        assert result.failure_count == 1
+        assert result.status == "active"
+
+        # Second failure
+        result = record_capability_failure(db_session, entry.id)
+        assert result.failure_count == 2
+        assert result.status == "active"
+
+        # Third failure -- hits threshold, auto-disabled
+        result = record_capability_failure(db_session, entry.id)
+        assert result.failure_count == 3
+        assert result.status == "disabled"
+
+
+# =============================================================================
+# API endpoint tests
+# =============================================================================
+
+
+class TestAPIEndpoints:
+    """Test REST API endpoints via FastAPI TestClient."""
+
+    @pytest.fixture
+    def app_client(self, db_session):
+        """Create a FastAPI TestClient with injected DB session."""
+        from fastapi import FastAPI
+        from sophia.capabilities.router import capabilities_router, _get_db
+
+        app = FastAPI()
+        app.include_router(capabilities_router)
+
+        def _override_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = _override_db
+        return TestClient(app)
+
+    def test_post_gaps_creates_gap(self, app_client):
+        """POST /api/capabilities/gaps creates a gap and returns 201."""
+        resp = app_client.post(
+            "/api/capabilities/gaps",
+            json={
+                "description": "Need TikTok publishing capability",
+                "detected_during": "publishing_stage",
+            },
+        )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["description"] == "Need TikTok publishing capability"
+        assert data["status"] == "open"
+        assert data["id"] is not None
+
+    def test_get_gaps_returns_list(self, app_client):
+        """GET /api/capabilities/gaps returns list of gaps."""
+        # Create a gap first
+        app_client.post(
+            "/api/capabilities/gaps",
+            json={
+                "description": "Need Pinterest publishing",
+                "detected_during": "research_stage",
+            },
+        )
+
+        resp = app_client.get("/api/capabilities/gaps")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert len(data["items"]) >= 1
+
+    def test_get_gap_not_found(self, app_client):
+        """GET /api/capabilities/gaps/999 returns 404."""
+        resp = app_client.get("/api/capabilities/gaps/999")
+        assert resp.status_code == 404
+
+    def test_approve_proposal_returns_registry(self, app_client, db_session):
+        """POST /approve creates registry entry and returns 201."""
+        # Setup entities in DB
+        gap = CapabilityGap(
+            description="Need something",
+            detected_during="testing",
+            status=GapStatus.proposals_ready.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="github",
+            name="api-test-tool",
+            description="Tool for API test",
+            url="https://github.com/test/api-tool",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=4,
+            quality_score=4,
+            security_score=4,
+            fit_score=4,
+            composite_score=4.0,
+            recommendation="recommend",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.pending.value,
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        resp = app_client.post(
+            f"/api/capabilities/proposals/{proposal.id}/approve",
+            json={"review_notes": "Approved via API test"},
+        )
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "api-test-tool"
+        assert data["status"] == "active"
+
+    def test_reject_proposal_requires_review_notes(self, app_client, db_session):
+        """POST /reject without review_notes returns 422."""
+        gap = CapabilityGap(
+            description="Something else",
+            detected_during="testing",
+            status=GapStatus.proposals_ready.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="github",
+            name="reject-test",
+            description="Tool to reject",
+            url="https://github.com/test/reject",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=3,
+            quality_score=3,
+            security_score=3,
+            fit_score=3,
+            composite_score=3.0,
+            recommendation="neutral",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.pending.value,
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        # Missing review_notes should fail validation
+        resp = app_client.post(
+            f"/api/capabilities/proposals/{proposal.id}/reject",
+            json={},
+        )
+        assert resp.status_code == 422
+
+    def test_approve_already_approved_returns_409(self, app_client, db_session):
+        """POST /approve on already-approved proposal returns 409."""
+        gap = CapabilityGap(
+            description="409 test gap",
+            detected_during="testing",
+            status=GapStatus.resolved.value,
+        )
+        db_session.add(gap)
+        db_session.flush()
+
+        disc = DiscoveredCapability(
+            gap_id=gap.id,
+            source="github",
+            name="409-test-tool",
+            description="Already approved",
+            url="https://github.com/test/409",
+        )
+        db_session.add(disc)
+        db_session.flush()
+
+        proposal = CapabilityProposal(
+            gap_id=gap.id,
+            discovered_id=disc.id,
+            relevance_score=4,
+            quality_score=4,
+            security_score=4,
+            fit_score=4,
+            composite_score=4.0,
+            recommendation="recommend",
+            auto_rejected=False,
+            justification_json='{}',
+            status=ProposalStatus.approved.value,
+            reviewed_at=datetime.now(timezone.utc),
+        )
+        db_session.add(proposal)
+        db_session.flush()
+
+        resp = app_client.post(
+            f"/api/capabilities/proposals/{proposal.id}/approve",
+            json={},
+        )
+        assert resp.status_code == 409
+
+    def test_registry_list(self, app_client, db_session):
+        """GET /api/capabilities/registry returns installed capabilities."""
+        entry = CapabilityRegistry(
+            name="registry-test-entry",
+            description="Test entry",
+            source="mcp_registry",
+            source_url="https://example.com/test",
+            installed_at=datetime.now(timezone.utc),
+            status=CapabilityStatus.active.value,
+            failure_count=0,
+            auto_disable_threshold=5,
+        )
+        db_session.add(entry)
+        db_session.flush()
+
+        resp = app_client.get("/api/capabilities/registry")
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] >= 1
+        assert data["active_count"] >= 1
+
+    def test_record_failure_endpoint(self, app_client, db_session):
+        """POST /registry/{id}/failure increments failure count."""
+        entry = CapabilityRegistry(
+            name="failure-test-entry",
+            description="Test entry for failure",
+            source="github",
+            source_url="https://example.com/fail",
+            installed_at=datetime.now(timezone.utc),
+            status=CapabilityStatus.active.value,
+            failure_count=0,
+            auto_disable_threshold=5,
+        )
+        db_session.add(entry)
+        db_session.flush()
+
+        resp = app_client.post(
+            f"/api/capabilities/registry/{entry.id}/failure"
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["failure_count"] == 1

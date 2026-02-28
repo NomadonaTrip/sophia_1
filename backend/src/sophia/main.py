@@ -10,7 +10,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
+from sophia.agent.router import agent_router
 from sophia.analytics.router import analytics_router
+from sophia.capabilities.router import capabilities_router
 from sophia.approval.router import approval_router, events_router
 from sophia.content.router import content_router
 from sophia.publishing.scheduler import create_scheduler
@@ -154,6 +156,8 @@ app.include_router(events_router)
 app.include_router(content_router)
 app.include_router(research_router)
 app.include_router(analytics_router)
+app.include_router(agent_router)
+app.include_router(capabilities_router)
 
 
 # Telegram webhook endpoint
