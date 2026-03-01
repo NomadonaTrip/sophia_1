@@ -142,11 +142,28 @@ def _weekly_briefing_job(session_factory: Callable) -> None:
 
 
 def _notification_processor_job(session_factory: Callable) -> None:
-    """Thin wrapper: process pending notifications."""
+    """Thin wrapper: process pending notification queue and detect value signals."""
     db = session_factory()
     try:
-        # Process any pending notification digests
-        logger.info("Notification processor: checking for pending digests")
+        from sophia.notifications.service import (
+            process_notification_queue,
+            detect_value_signals,
+        )
+
+        loop = asyncio.get_event_loop()
+        result = loop.run_until_complete(process_notification_queue(db))
+        logger.info(
+            "Notification processor: processed=%d, sent=%d, failed=%d",
+            result["clients_processed"],
+            result["emails_sent"],
+            result["emails_failed"],
+        )
+
+        # Also detect new value signals for operator review
+        signals = detect_value_signals(db)
+        if signals:
+            logger.info("Detected %d new value signals for operator review", len(signals))
+
     except Exception:
         logger.exception("Failed to process notifications")
     finally:

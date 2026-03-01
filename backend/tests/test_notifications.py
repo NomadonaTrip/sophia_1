@@ -20,6 +20,12 @@ from sophia.notifications.models import (
     ValueSignal,
 )
 from sophia.notifications.email import render_email_template
+from sophia.notifications.service import (
+    approve_value_signal,
+    dismiss_value_signal,
+    get_notification_history,
+    process_notification_queue,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -302,3 +308,598 @@ class TestEmailRendering:
 
         assert "Minimal Client" in html
         assert "500" in html
+
+    def test_send_performance_report_calls_resend(self):
+        """send_performance_report calls resend.Emails.send with correct params."""
+        import asyncio
+        import resend as resend_module
+        from sophia.notifications.email import send_performance_report
+
+        mock_send = MagicMock(return_value={"id": "re_test123"})
+
+        with patch.object(resend_module.Emails, "send", mock_send), \
+             patch("sophia.config.get_settings") as mock_settings:
+            settings = MagicMock()
+            settings.resend_api_key = "test_key"
+            settings.notification_from_email = "test@example.com"
+            settings.notification_from_name = "Test Sender"
+            mock_settings.return_value = settings
+
+            result = asyncio.get_event_loop().run_until_complete(
+                send_performance_report(
+                    client_email="client@example.com",
+                    client_name="Test Client",
+                    metrics={"engagement_rate": 0.05},
+                    period="Test Period",
+                )
+            )
+
+        assert result == "re_test123"
+        mock_send.assert_called_once()
+        call_params = mock_send.call_args[0][0]
+        assert call_params["to"] == ["client@example.com"]
+        assert "Test Period" in call_params["subject"]
+
+    def test_send_performance_report_failure_returns_none(self):
+        """send_performance_report returns None on Resend failure."""
+        import asyncio
+        import resend as resend_module
+        from sophia.notifications.email import send_performance_report
+
+        mock_send = MagicMock(side_effect=Exception("API error"))
+
+        with patch.object(resend_module.Emails, "send", mock_send), \
+             patch("sophia.config.get_settings") as mock_settings:
+            settings = MagicMock()
+            settings.resend_api_key = "test_key"
+            settings.notification_from_email = "test@example.com"
+            settings.notification_from_name = "Test Sender"
+            mock_settings.return_value = settings
+
+            result = asyncio.get_event_loop().run_until_complete(
+                send_performance_report(
+                    client_email="client@example.com",
+                    client_name="Test",
+                    metrics={},
+                    period="Test",
+                )
+            )
+
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# Service tests
+# ---------------------------------------------------------------------------
+
+
+class TestService:
+    """Tests for notification service logic."""
+
+    @pytest.mark.asyncio
+    @patch("sophia.notifications.email.send_performance_report", new_callable=AsyncMock)
+    async def test_process_queue_sends_for_active_client(
+        self, mock_send, db_session, sample_client
+    ):
+        """Queue processes clients with active preferences and sends email."""
+        mock_send.return_value = "re_queue_test"
+
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="dana@example.com",
+            is_active=True,
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        result = await process_notification_queue(db_session)
+
+        assert result["clients_processed"] >= 1
+        assert result["emails_sent"] >= 1
+        mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_process_queue_skips_client_without_preferences(
+        self, db_session, sample_client
+    ):
+        """Queue skips clients without notification preferences entirely."""
+        # No preferences created for sample_client
+        result = await process_notification_queue(db_session)
+
+        assert result["clients_processed"] == 0
+        assert result["emails_sent"] == 0
+
+    @pytest.mark.asyncio
+    @patch("sophia.notifications.email.send_performance_report", new_callable=AsyncMock)
+    async def test_frequency_enforcement_not_due(
+        self, mock_send, db_session, sample_client
+    ):
+        """Queue does NOT send if last notification was recent (frequency not due)."""
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="dana@example.com",
+            is_active=True,
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        # Add recent notification log (3 days ago -- not due for weekly)
+        log = NotificationLog(
+            client_id=sample_client.id,
+            notification_type="performance_report",
+            subject="Recent report",
+            status="sent",
+            sent_at=datetime.now() - timedelta(days=3),
+            resend_message_id="re_recent",
+        )
+        db_session.add(log)
+        db_session.flush()
+
+        result = await process_notification_queue(db_session)
+
+        assert result["clients_processed"] >= 1
+        assert result["emails_sent"] == 0
+        mock_send.assert_not_called()
+
+    @pytest.mark.asyncio
+    @patch("sophia.notifications.email.send_performance_report", new_callable=AsyncMock)
+    async def test_frequency_enforcement_due(
+        self, mock_send, db_session, sample_client
+    ):
+        """Queue sends when enough time has elapsed since last notification."""
+        mock_send.return_value = "re_due_test"
+
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="dana@example.com",
+            is_active=True,
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        # Add old notification log (10 days ago -- due for weekly)
+        log = NotificationLog(
+            client_id=sample_client.id,
+            notification_type="performance_report",
+            subject="Old report",
+            status="sent",
+            sent_at=datetime.now() - timedelta(days=10),
+            resend_message_id="re_old",
+        )
+        db_session.add(log)
+        db_session.flush()
+
+        result = await process_notification_queue(db_session)
+
+        assert result["emails_sent"] >= 1
+        mock_send.assert_called_once()
+
+    @pytest.mark.asyncio
+    @patch("sophia.notifications.email.send_value_signal_email", new_callable=AsyncMock)
+    async def test_approve_value_signal_sends_email(
+        self, mock_send, db_session, sample_client
+    ):
+        """Approving a value signal sends the email and updates status to 'sent'."""
+        mock_send.return_value = "re_signal_test"
+
+        # Create preference so email can be sent
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="dana@example.com",
+            is_active=True,
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        signal = ValueSignal(
+            client_id=sample_client.id,
+            signal_type="enquiry_driver",
+            headline="12 enquiries from spring prep post!",
+            details="Great results.",
+            metric_value=12.0,
+            metric_baseline=4.0,
+            status="pending",
+        )
+        db_session.add(signal)
+        db_session.flush()
+
+        result = await approve_value_signal(db_session, signal.id)
+
+        assert result is not None
+        assert result.status == "sent"
+        assert result.sent_at is not None
+        assert result.approved_at is not None
+        mock_send.assert_called_once()
+
+    def test_dismiss_value_signal(self, db_session, sample_client):
+        """Dismissing a value signal sets status to 'dismissed' with no email."""
+        signal = ValueSignal(
+            client_id=sample_client.id,
+            signal_type="audience_growth",
+            headline="Growth!",
+            details="Details.",
+            status="pending",
+        )
+        db_session.add(signal)
+        db_session.flush()
+
+        result = dismiss_value_signal(db_session, signal.id)
+
+        assert result is not None
+        assert result.status == "dismissed"
+        assert result.sent_at is None
+
+    def test_dismiss_non_pending_signal_returns_none(self, db_session, sample_client):
+        """Cannot dismiss a signal that is not pending."""
+        signal = ValueSignal(
+            client_id=sample_client.id,
+            signal_type="audience_growth",
+            headline="Already sent",
+            details="Details.",
+            status="sent",
+        )
+        db_session.add(signal)
+        db_session.flush()
+
+        result = dismiss_value_signal(db_session, signal.id)
+        assert result is None
+
+    def test_get_notification_history(self, db_session, sample_client):
+        """Notification history returns logs ordered by sent_at desc."""
+        for i in range(3):
+            log = NotificationLog(
+                client_id=sample_client.id,
+                notification_type="performance_report",
+                subject=f"Report {i}",
+                status="sent",
+                sent_at=datetime.now() - timedelta(days=i),
+                resend_message_id=f"re_{i}",
+            )
+            db_session.add(log)
+        db_session.flush()
+
+        history = get_notification_history(db_session, client_id=sample_client.id)
+
+        assert len(history) == 3
+        # Most recent first
+        assert history[0].subject == "Report 0"
+        assert history[2].subject == "Report 2"
+
+    def test_get_notification_history_with_limit(self, db_session, sample_client):
+        """History respects limit parameter."""
+        for i in range(5):
+            log = NotificationLog(
+                client_id=sample_client.id,
+                notification_type="performance_report",
+                subject=f"Report {i}",
+                status="sent",
+                sent_at=datetime.now() - timedelta(days=i),
+            )
+            db_session.add(log)
+        db_session.flush()
+
+        history = get_notification_history(db_session, client_id=sample_client.id, limit=2)
+        assert len(history) == 2
+
+    @pytest.mark.asyncio
+    async def test_approve_nonexistent_signal_returns_none(self, db_session):
+        """Approving a nonexistent signal returns None."""
+        result = await approve_value_signal(db_session, 9999)
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_approve_non_pending_signal_returns_none(self, db_session, sample_client):
+        """Cannot approve a signal that is not in pending state."""
+        signal = ValueSignal(
+            client_id=sample_client.id,
+            signal_type="audience_growth",
+            headline="Already dismissed",
+            details="Details.",
+            status="dismissed",
+        )
+        db_session.add(signal)
+        db_session.flush()
+
+        result = await approve_value_signal(db_session, signal.id)
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# API endpoint tests
+# ---------------------------------------------------------------------------
+
+
+class TestAPI:
+    """Tests for notification REST API endpoints."""
+
+    def test_create_preferences(self, db_session, sample_client):
+        """POST /preferences creates notification preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        client = TestClient(app)
+        resp = client.post("/api/notifications/preferences", json={
+            "client_id": sample_client.id,
+            "email_address": "test@example.com",
+            "frequency": "weekly",
+        })
+
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["client_id"] == sample_client.id
+        assert data["frequency"] == "weekly"
+        assert data["is_active"] is True
+
+    def test_get_preferences(self, db_session, sample_client):
+        """GET /preferences/{client_id} returns existing preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        # Create preference first
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="monthly",
+            email_address="get@example.com",
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.get(f"/api/notifications/preferences/{sample_client.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["email_address"] == "get@example.com"
+
+    def test_get_preferences_404(self, db_session):
+        """GET /preferences/{client_id} returns 404 if no preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        client = TestClient(app)
+        resp = client.get("/api/notifications/preferences/99999")
+
+        assert resp.status_code == 404
+
+    def test_update_preferences(self, db_session, sample_client):
+        """PUT /preferences/{client_id} updates existing preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="monthly",
+            email_address="old@example.com",
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.put(f"/api/notifications/preferences/{sample_client.id}", json={
+            "frequency": "weekly",
+            "email_address": "new@example.com",
+        })
+
+        assert resp.status_code == 200
+        assert resp.json()["frequency"] == "weekly"
+        assert resp.json()["email_address"] == "new@example.com"
+
+    def test_deactivate_preferences(self, db_session, sample_client):
+        """DELETE /preferences/{client_id} sets is_active=False."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="delete@example.com",
+            is_active=True,
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.delete(f"/api/notifications/preferences/{sample_client.id}")
+
+        assert resp.status_code == 200
+        assert resp.json()["is_active"] is False
+
+    def test_notification_history(self, db_session, sample_client):
+        """GET /history returns notification history with counts."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        for status in ["sent", "sent", "failed"]:
+            log = NotificationLog(
+                client_id=sample_client.id,
+                notification_type="performance_report",
+                subject="Report",
+                status=status,
+                sent_at=datetime.now(),
+            )
+            db_session.add(log)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.get(
+            f"/api/notifications/history?client_id={sample_client.id}"
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["total"] == 3
+        assert data["sent_count"] == 2
+        assert data["failed_count"] == 1
+
+    def test_list_value_signals(self, db_session, sample_client):
+        """GET /value-signals returns signals with counts."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        for status in ["pending", "pending", "sent"]:
+            signal = ValueSignal(
+                client_id=sample_client.id,
+                signal_type="enquiry_driver",
+                headline="Test",
+                details="Details",
+                status=status,
+            )
+            db_session.add(signal)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.get(
+            f"/api/notifications/value-signals?client_id={sample_client.id}"
+        )
+
+        assert resp.status_code == 200
+        data = resp.json()
+        assert len(data["items"]) == 3
+        assert data["pending_count"] == 2
+        assert data["sent_count"] == 1
+
+    def test_dismiss_signal_endpoint(self, db_session, sample_client):
+        """POST /value-signals/{id}/dismiss dismisses a pending signal."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        signal = ValueSignal(
+            client_id=sample_client.id,
+            signal_type="audience_growth",
+            headline="Dismiss me",
+            details="Details",
+            status="pending",
+        )
+        db_session.add(signal)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.post(f"/api/notifications/value-signals/{signal.id}/dismiss")
+
+        assert resp.status_code == 200
+        assert resp.json()["status"] == "dismissed"
+
+    def test_manual_send_without_preferences_404(self, db_session, sample_client):
+        """POST /send-report/{client_id} returns 404 without preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        client = TestClient(app)
+        resp = client.post(f"/api/notifications/send-report/{sample_client.id}")
+
+        assert resp.status_code == 404
+
+    def test_create_duplicate_preferences_409(self, db_session, sample_client):
+        """POST /preferences returns 409 for duplicate client preferences."""
+        from fastapi.testclient import TestClient
+        from sophia.notifications.router import notification_router, _get_db
+        from fastapi import FastAPI
+
+        app = FastAPI()
+        app.include_router(notification_router)
+
+        def override_get_db():
+            yield db_session
+
+        app.dependency_overrides[_get_db] = override_get_db
+
+        pref = NotificationPreference(
+            client_id=sample_client.id,
+            frequency="weekly",
+            email_address="dup@example.com",
+        )
+        db_session.add(pref)
+        db_session.flush()
+
+        client = TestClient(app)
+        resp = client.post("/api/notifications/preferences", json={
+            "client_id": sample_client.id,
+            "email_address": "dup2@example.com",
+            "frequency": "monthly",
+        })
+
+        assert resp.status_code == 409

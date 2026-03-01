@@ -17,6 +17,7 @@ from sophia.approval.router import approval_router, events_router
 from sophia.content.router import content_router
 from sophia.publishing.scheduler import create_scheduler
 from sophia.publishing.stale_monitor import register_stale_monitor
+from sophia.notifications.router import notification_router
 from sophia.research.router import router as research_router
 
 
@@ -158,6 +159,7 @@ app.include_router(research_router)
 app.include_router(analytics_router)
 app.include_router(agent_router)
 app.include_router(capabilities_router)
+app.include_router(notification_router)
 
 
 # Telegram webhook endpoint
