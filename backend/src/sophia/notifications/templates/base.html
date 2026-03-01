@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sophia by Orban Forest{% endblock %}</title>
+    <style>
+        /* Base email styles -- premailer will inline these */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            color: #333333;
+            line-height: 1.6;
+        }
+        .email-wrapper {
+            width: 100%;
+            background-color: #f4f4f4;
+            padding: 20px 0;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+        /* Header: Midnight Sage design -- dark with sage green accent */
+        .email-header {
+            background-color: #1a2e1a;
+            padding: 32px 40px;
+            text-align: center;
+        }
+        .email-header h1 {
+            color: #7fa87f;
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+        .email-header .subtitle {
+            color: #b8ccb8;
+            font-size: 13px;
+            margin-top: 6px;
+        }
+        /* Content area */
+        .email-body {
+            padding: 32px 40px;
+        }
+        .email-body h2 {
+            color: #1a2e1a;
+            font-size: 20px;
+            margin-top: 0;
+            margin-bottom: 16px;
+        }
+        .email-body p {
+            color: #555555;
+            font-size: 15px;
+            margin: 0 0 16px 0;
+        }
+        /* Footer */
+        .email-footer {
+            background-color: #f8f9f8;
+            padding: 24px 40px;
+            text-align: center;
+            border-top: 1px solid #e8ece8;
+        }
+        .email-footer p {
+            color: #999999;
+            font-size: 12px;
+            margin: 0 0 8px 0;
+        }
+        .email-footer a {
+            color: #7fa87f;
+            text-decoration: none;
+        }
+        /* Utility classes */
+        .cta-text {
+            color: #7fa87f;
+            font-size: 14px;
+            font-style: italic;
+        }
+        .sage-accent {
+            color: #7fa87f;
+        }
+        .divider {
+            border: none;
+            border-top: 1px solid #e8ece8;
+            margin: 24px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-wrapper">
+        <table class="email-container" width="600" cellpadding="0" cellspacing="0" role="presentation">
+            <!-- Header -->
+            <tr>
+                <td class="email-header">
+                    <h1>Sophia</h1>
+                    <div class="subtitle">by Orban Forest</div>
+                </td>
+            </tr>
+            <!-- Body -->
+            <tr>
+                <td class="email-body">
+                    {% block content %}{% endblock %}
+                </td>
+            </tr>
+            <!-- Footer -->
+            <tr>
+                <td class="email-footer">
+                    <p>Powered by <strong>Sophia</strong> | <a href="https://orbanforest.com">Orban Forest</a></p>
+                    <p>
+                        <a href="{{ unsubscribe_url | default('#', true) }}">Unsubscribe</a> |
+                        <a href="{{ preferences_url | default('#', true) }}">Email preferences</a>
+                    </p>
+                    <p>&copy; {{ year | default(2026) }} Orban Forest. All rights reserved.</p>
+                </td>
+            </tr>
+        </table>
+    </div>
+</body>
+</html>

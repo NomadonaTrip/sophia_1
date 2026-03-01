@@ -64,6 +64,11 @@ from sophia.capabilities.models import (  # noqa: F401 -- ensure models register
     CapabilityRegistry,
     DiscoveredCapability,
 )
+from sophia.notifications.models import (  # noqa: F401 -- ensure models registered
+    NotificationLog,
+    NotificationPreference,
+    ValueSignal,
+)
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}{{ headline }}{% endblock %}
+
+{% block content %}
+<h2 style="color: #1a2e1a; margin-bottom: 8px;">{{ headline }}</h2>
+<p style="color: #999999; font-size: 13px; margin-bottom: 24px;">Good news for {{ client_name }}</p>
+
+{% if metric_value is not none %}
+<!-- Hero Metric Display -->
+<div style="background-color: #1a2e1a; border-radius: 12px; padding: 32px; text-align: center; margin: 24px 0;">
+    <div style="font-size: 48px; font-weight: 700; color: #7fa87f; line-height: 1.1;">
+        {{ metric_value | int if metric_value == metric_value | int else "%.1f" | format(metric_value) }}
+    </div>
+    <div style="font-size: 14px; color: #b8ccb8; margin-top: 8px; text-transform: uppercase; letter-spacing: 1px;">
+        {% if "enquir" in headline.lower() %}
+        Enquiries
+        {% elif "engagement" in headline.lower() %}
+        Engagement Rate
+        {% elif "follower" in headline.lower() or "audience" in headline.lower() %}
+        New Followers
+        {% else %}
+        Result
+        {% endif %}
+    </div>
+    {% if comparison_text %}
+    <div style="font-size: 16px; color: #ffffff; margin-top: 12px; font-weight: 600;">
+        {{ comparison_text }}
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Details Section -->
+<p>Hi {{ client_name }},</p>
+<p>{{ details }}</p>
+
+{% if metric_baseline is not none and metric_value is not none %}
+<div style="background-color: #f0f5f0; border-radius: 8px; padding: 16px; margin: 16px 0;">
+    <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+        <tr>
+            <td width="50%" style="text-align: center; padding: 8px;">
+                <div style="font-size: 24px; font-weight: 700; color: #1a2e1a;">{{ metric_value | int if metric_value == metric_value | int else "%.1f" | format(metric_value) }}</div>
+                <div style="font-size: 11px; color: #777777; text-transform: uppercase;">This time</div>
+            </td>
+            <td width="50%" style="text-align: center; padding: 8px; border-left: 1px solid #dde5dd;">
+                <div style="font-size: 24px; font-weight: 700; color: #999999;">{{ metric_baseline | int if metric_baseline == metric_baseline | int else "%.1f" | format(metric_baseline) }}</div>
+                <div style="font-size: 11px; color: #777777; text-transform: uppercase;">Your average</div>
+            </td>
+        </tr>
+    </table>
+</div>
+{% endif %}
+
+<hr class="divider">
+<p class="cta-text">Want to see more results like this? We're already working on it.</p>
+{% endblock %}

@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     facebook_app_id: str = ""
     facebook_app_secret: str = ""
 
+    # Resend email (client notifications)
+    resend_api_key: str = ""
+    notification_from_email: str = "reports@orbanforest.com"
+    notification_from_name: str = "Sophia by Orban Forest"
+
     # GitHub API (capability discovery)
     github_token: str = ""
 

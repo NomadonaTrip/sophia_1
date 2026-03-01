@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Your Content Performance Report - {{ period }}{% endblock %}
+
+{% block content %}
+<h2>Your Content Performance Report</h2>
+<p style="color: #999999; font-size: 13px; margin-bottom: 24px;">{{ period }}</p>
+
+<p>Hi {{ client_name }},</p>
+<p>Here's how your content performed this period. We track what matters -- real engagement from real people, not just vanity metrics.</p>
+
+<!-- Key Metrics Grid -->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: 24px 0;">
+    <tr>
+        {% if metrics.get('engagement_rate') is not none %}
+        <td width="50%" style="padding: 8px;">
+            <div style="background-color: #f0f5f0; border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #1a2e1a;">
+                    {{ "%.1f" | format(metrics.engagement_rate * 100) }}%
+                </div>
+                <div style="font-size: 12px; color: #777777; text-transform: uppercase; letter-spacing: 0.5px;">Engagement Rate</div>
+                {% if comparisons.get('engagement_rate') is not none %}
+                <div style="font-size: 12px; color: {{ '#4a9e4a' if comparisons.engagement_rate >= 0 else '#c04040' }}; margin-top: 4px;">
+                    {{ '&#9650;' if comparisons.engagement_rate >= 0 else '&#9660;' }}
+                    {{ "%.1f" | format(comparisons.engagement_rate | abs * 100) }}% vs last period
+                </div>
+                {% endif %}
+            </div>
+        </td>
+        {% endif %}
+        {% if metrics.get('reach') is not none %}
+        <td width="50%" style="padding: 8px;">
+            <div style="background-color: #f0f5f0; border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #1a2e1a;">
+                    {{ "{:,}".format(metrics.reach | int) }}
+                </div>
+                <div style="font-size: 12px; color: #777777; text-transform: uppercase; letter-spacing: 0.5px;">People Reached</div>
+                {% if comparisons.get('reach') is not none %}
+                <div style="font-size: 12px; color: {{ '#4a9e4a' if comparisons.reach >= 0 else '#c04040' }}; margin-top: 4px;">
+                    {{ '&#9650;' if comparisons.reach >= 0 else '&#9660;' }}
+                    {{ "%.1f" | format(comparisons.reach | abs * 100) }}% vs last period
+                </div>
+                {% endif %}
+            </div>
+        </td>
+        {% endif %}
+    </tr>
+    <tr>
+        {% if metrics.get('impressions') is not none %}
+        <td width="50%" style="padding: 8px;">
+            <div style="background-color: #f0f5f0; border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #1a2e1a;">
+                    {{ "{:,}".format(metrics.impressions | int) }}
+                </div>
+                <div style="font-size: 12px; color: #777777; text-transform: uppercase; letter-spacing: 0.5px;">Impressions</div>
+                {% if comparisons.get('impressions') is not none %}
+                <div style="font-size: 12px; color: {{ '#4a9e4a' if comparisons.impressions >= 0 else '#c04040' }}; margin-top: 4px;">
+                    {{ '&#9650;' if comparisons.impressions >= 0 else '&#9660;' }}
+                    {{ "%.1f" | format(comparisons.impressions | abs * 100) }}% vs last period
+                </div>
+                {% endif %}
+            </div>
+        </td>
+        {% endif %}
+        {% if metrics.get('follower_growth') is not none %}
+        <td width="50%" style="padding: 8px;">
+            <div style="background-color: #f0f5f0; border-radius: 8px; padding: 16px; text-align: center;">
+                <div style="font-size: 28px; font-weight: 700; color: #1a2e1a;">
+                    {{ "+" if metrics.follower_growth >= 0 else "" }}{{ metrics.follower_growth | int }}
+                </div>
+                <div style="font-size: 12px; color: #777777; text-transform: uppercase; letter-spacing: 0.5px;">New Followers</div>
+                {% if comparisons.get('follower_growth') is not none %}
+                <div style="font-size: 12px; color: {{ '#4a9e4a' if comparisons.follower_growth >= 0 else '#c04040' }}; margin-top: 4px;">
+                    {{ '&#9650;' if comparisons.follower_growth >= 0 else '&#9660;' }}
+                    {{ "%.1f" | format(comparisons.follower_growth | abs * 100) }}% vs last period
+                </div>
+                {% endif %}
+            </div>
+        </td>
+        {% endif %}
+    </tr>
+</table>
+
+{% if highlights %}
+<!-- Highlights Section -->
+<hr class="divider">
+<h2 style="font-size: 16px;">Top Highlights</h2>
+<ul style="padding-left: 20px; color: #555555;">
+    {% for highlight in highlights %}
+    <li style="margin-bottom: 8px;">{{ highlight }}</li>
+    {% endfor %}
+</ul>
+{% endif %}
+
+<hr class="divider">
+<p class="cta-text">Questions about your content strategy? Reply to this email.</p>
+{% endblock %}
