@@ -141,14 +141,15 @@ Plans:
   5. Safe read-only capabilities auto-acquire without operator approval; risky capabilities require approval
   6. Operator can converse with Sophia via chat bar with real-time SSE-streamed responses, intent detection, and persistent conversation history
   7. Every cycle stage creates a structured audit trail with decision traces
-**Plans**: 5 plans across 3 waves
+**Plans**: 6 plans across 3 waves
 
 Plans:
 - [x] 07-01-PLAN.md — Orchestrator models, schemas, specialist agent service, migration (Wave 1) [ORCH-06, ORCH-10]
-- [ ] 07-02-PLAN.md — Tiered skill governance: safe auto-acquire, risky require approval (Wave 1) [ORCH-07]
-- [ ] 07-03-PLAN.md — Observer, judge, auto-approval logic with burn-in and suspension (Wave 2, depends on 07-01) [ORCH-02, ORCH-04, ORCH-05, ORCH-09]
-- [ ] 07-04-PLAN.md — Editor Agent daily cycle orchestrator, scheduling, exception briefing, API (Wave 3, depends on 07-01, 07-03) [ORCH-01, ORCH-03, ORCH-10]
-- [ ] 07-05-PLAN.md — Chat integration: backend intent detection + SSE streaming + frontend wiring (Wave 2, depends on 07-01) [ORCH-08]
+- [x] 07-02-PLAN.md — Tiered skill governance: safe auto-acquire, risky require approval (Wave 1) [ORCH-07]
+- [x] 07-03-PLAN.md — Observer, judge, auto-approval logic with burn-in and suspension (Wave 2, depends on 07-01) [ORCH-02, ORCH-04, ORCH-05, ORCH-09]
+- [x] 07-04-PLAN.md — Editor Agent daily cycle orchestrator, scheduling, exception briefing, API (Wave 3, depends on 07-01, 07-03) [ORCH-01, ORCH-03, ORCH-10]
+- [x] 07-05-PLAN.md — Chat integration: backend intent detection + SSE streaming + frontend wiring (Wave 2, depends on 07-01) [ORCH-08]
+- [ ] 07-06-PLAN.md — Gap closure: wire cycle trigger chat intent + fix deprecated asyncio in scheduler (Wave 1, gap closure) [ORCH-08]
 
 ## Progress
 
@@ -163,4 +164,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 4. Approval, Publishing & Recovery | 6/6 | Complete | 2026-02-28 |
 | 5. Performance Analytics & Evaluation | 4/4 | Complete | 2026-02-28 |
 | 6. Learning, Evolution & Client Communication | 3/3 | Complete | 2026-03-01 |
-| 7. Agentic Orchestration & Editor Agent | 1/5 | In Progress | - |
+| 7. Agentic Orchestration & Editor Agent | 5/6 | In Progress | - |
