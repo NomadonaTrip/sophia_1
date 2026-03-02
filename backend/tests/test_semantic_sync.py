@@ -91,7 +91,7 @@ class TestSyncToLance:
     def test_sync_writes_to_lancedb(self, lance_tmp, mock_embed):
         """sync_to_lance creates a record in LanceDB."""
         with patch("sophia.semantic.sync.embed", side_effect=mock_embed):
-            asyncio.get_event_loop().run_until_complete(
+            asyncio.run(
                 sync_to_lance(
                     record_type="intelligence_entries",
                     record_id=1,
@@ -117,7 +117,7 @@ class TestSyncToLance:
         """Multiple sync calls accumulate records in LanceDB."""
         with patch("sophia.semantic.sync.embed", side_effect=mock_embed):
             for i in range(3):
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     sync_to_lance(
                         record_type="research_findings",
                         record_id=i + 1,
@@ -140,7 +140,7 @@ class TestSyncToLance:
         ):
             with caplog.at_level(logging.ERROR):
                 # Should NOT raise
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     sync_to_lance(
                         record_type="intelligence_entries",
                         record_id=99,
@@ -155,7 +155,7 @@ class TestSyncToLance:
     def test_sync_stores_correct_metadata(self, lance_tmp, mock_embed):
         """Synced records contain correct client_id and domain metadata."""
         with patch("sophia.semantic.sync.embed", side_effect=mock_embed):
-            asyncio.get_event_loop().run_until_complete(
+            asyncio.run(
                 sync_to_lance(
                     record_type="intelligence_entries",
                     record_id=42,
@@ -191,7 +191,7 @@ class TestReconcileCounts:
         # Add 2 rows to LanceDB for intelligence_entries
         with patch("sophia.semantic.sync.embed", side_effect=mock_embed):
             for i in range(2):
-                asyncio.get_event_loop().run_until_complete(
+                asyncio.run(
                     sync_to_lance(
                         record_type="intelligence_entries",
                         record_id=i + 1,

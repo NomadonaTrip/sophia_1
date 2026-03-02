@@ -67,7 +67,7 @@ class TestEmbed:
         """embed() returns a vector with exactly 1024 dimensions."""
         embeddings._model = mock_bgem3
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed("test text")
         )
 
@@ -78,7 +78,7 @@ class TestEmbed:
         """embed() returns a list of float values."""
         embeddings._model = mock_bgem3
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed("test text")
         )
 
@@ -92,7 +92,7 @@ class TestEmbed:
         mock_model.encode.return_value = {"dense_vecs": vecs}
         embeddings._model = mock_model
 
-        asyncio.get_event_loop().run_until_complete(
+        asyncio.run(
             embeddings.embed("hello world")
         )
 
@@ -107,7 +107,7 @@ class TestEmbedBatch:
         embeddings._model = mock_bgem3
         texts = ["text one", "text two", "text three"]
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed_batch(texts)
         )
 
@@ -118,7 +118,7 @@ class TestEmbedBatch:
         embeddings._model = mock_bgem3
         texts = ["text one", "text two"]
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed_batch(texts)
         )
 
@@ -129,7 +129,7 @@ class TestEmbedBatch:
         """embed_batch([]) returns an empty list without calling the model."""
         embeddings._model = mock_bgem3
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed_batch([])
         )
 
@@ -139,7 +139,7 @@ class TestEmbedBatch:
         """embed_batch() works correctly with a single text."""
         embeddings._model = mock_bgem3
 
-        result = asyncio.get_event_loop().run_until_complete(
+        result = asyncio.run(
             embeddings.embed_batch(["single"])
         )
 
@@ -171,7 +171,7 @@ class TestLockSerialization:
             task2 = asyncio.create_task(embeddings.embed("second"))
             await asyncio.gather(task1, task2)
 
-        asyncio.get_event_loop().run_until_complete(run_concurrent())
+        asyncio.run(run_concurrent())
 
         # Both calls should complete (order may vary, but no interleaving)
         assert len(call_order) == 4
