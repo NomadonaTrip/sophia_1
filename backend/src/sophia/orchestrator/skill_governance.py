@@ -75,22 +75,24 @@ def classify_skill_risk(capability: DiscoveredCapability) -> str:
     capability_type_lower = getattr(capability, "capability_type", "") or ""
     capability_type_lower = capability_type_lower.lower()
 
-    # Split description into words for verb matching
-    desc_words = set(description_lower.split())
+    # Helper: check if any keyword appears as substring in text
+    # This handles conjugated forms (e.g. "searches" matches "search")
+    def _has_keyword(text: str, keywords: frozenset) -> list[str]:
+        return [kw for kw in keywords if kw in text]
 
     # --- Check RISKY indicators first (risky wins over safe) ---
 
     # Risky capability type
-    for risky_type in _RISKY_CAPABILITY_TYPES:
-        if risky_type in capability_type_lower:
-            logger.info(
-                "Classified '%s' as RISKY (capability_type contains '%s')",
-                capability.name, risky_type,
-            )
-            return "risky"
+    risky_type_matches = _has_keyword(capability_type_lower, _RISKY_CAPABILITY_TYPES)
+    if risky_type_matches:
+        logger.info(
+            "Classified '%s' as RISKY (capability_type contains '%s')",
+            capability.name, risky_type_matches[0],
+        )
+        return "risky"
 
-    # Risky description verbs
-    risky_matches = desc_words & _RISKY_DESCRIPTION_VERBS
+    # Risky description verbs (substring match)
+    risky_matches = _has_keyword(description_lower, _RISKY_DESCRIPTION_VERBS)
     if risky_matches:
         logger.info(
             "Classified '%s' as RISKY (description contains: %s)",
@@ -101,17 +103,17 @@ def classify_skill_risk(capability: DiscoveredCapability) -> str:
     # --- Check SAFE indicators ---
 
     # Safe capability type
-    for safe_type in _SAFE_CAPABILITY_TYPES:
-        if safe_type in capability_type_lower:
-            logger.info(
-                "Classified '%s' as SAFE (capability_type contains '%s')",
-                capability.name, safe_type,
-            )
-            return "safe"
+    safe_type_matches = _has_keyword(capability_type_lower, _SAFE_CAPABILITY_TYPES)
+    if safe_type_matches:
+        logger.info(
+            "Classified '%s' as SAFE (capability_type contains '%s')",
+            capability.name, safe_type_matches[0],
+        )
+        return "safe"
 
-    # MCP server source with read-only description verbs
-    if source_lower == "mcp_registry" or source_lower == "mcp_server":
-        safe_matches = desc_words & _SAFE_DESCRIPTION_VERBS
+    # MCP server source with read-only description verbs (substring match)
+    if source_lower in ("mcp_registry", "mcp_server"):
+        safe_matches = _has_keyword(description_lower, _SAFE_DESCRIPTION_VERBS)
         if safe_matches:
             logger.info(
                 "Classified '%s' as SAFE (MCP source + description: %s)",
@@ -120,7 +122,7 @@ def classify_skill_risk(capability: DiscoveredCapability) -> str:
             return "safe"
 
     # Safe description verbs (non-MCP sources too, if no risky verbs matched)
-    safe_matches = desc_words & _SAFE_DESCRIPTION_VERBS
+    safe_matches = _has_keyword(description_lower, _SAFE_DESCRIPTION_VERBS)
     if safe_matches:
         logger.info(
             "Classified '%s' as SAFE (description contains: %s)",
