@@ -118,9 +118,7 @@ def _daily_standup_job(session_factory: Callable) -> None:
     try:
         from sophia.agent.briefing import generate_daily_standup
 
-        asyncio.get_event_loop().run_until_complete(
-            generate_daily_standup(db)
-        )
+        asyncio.run(generate_daily_standup(db))
         logger.info("Daily standup briefing generated successfully")
     except Exception:
         logger.exception("Failed to generate daily standup briefing")
@@ -134,9 +132,7 @@ def _weekly_briefing_job(session_factory: Callable) -> None:
     try:
         from sophia.agent.briefing import generate_weekly_briefing
 
-        asyncio.get_event_loop().run_until_complete(
-            generate_weekly_briefing(db)
-        )
+        asyncio.run(generate_weekly_briefing(db))
         logger.info("Weekly strategic briefing generated successfully")
     except Exception:
         logger.exception("Failed to generate weekly strategic briefing")
@@ -153,8 +149,7 @@ def _notification_processor_job(session_factory: Callable) -> None:
             detect_value_signals,
         )
 
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(process_notification_queue(db))
+        result = asyncio.run(process_notification_queue(db))
         logger.info(
             "Notification processor: processed=%d, sent=%d, failed=%d",
             result["clients_processed"],
