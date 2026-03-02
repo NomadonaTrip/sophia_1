@@ -127,7 +127,7 @@ Plans:
 Plans:
 - [x] 06-01: Learning Persistence, Scheduling & Briefings (Wave 1) [LRNG-01..07]
 - [x] 06-02: Capability Discovery & Registry (Wave 1) [CPBL-01..05]
-- [ ] 06-03: Client Email Notifications & Value Signals (Wave 2, depends on 06-01) [COMM-01..03]
+- [x] 06-03: Client Email Notifications & Value Signals (Wave 2, depends on 06-01) [COMM-01..03]
 
 ## Progress
 
