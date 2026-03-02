@@ -66,8 +66,15 @@ from sophia.capabilities.models import (  # noqa: F401 -- ensure models register
 )
 from sophia.notifications.models import (  # noqa: F401 -- ensure models registered
     NotificationLog,
-    NotificationPreference,
+    NotificationPreference as NotifPref,
     ValueSignal,
+)
+from sophia.orchestrator.models import (  # noqa: F401 -- ensure models registered
+    AutoApprovalConfig,
+    ChatMessage,
+    CycleRun,
+    CycleStage,
+    SpecialistAgent,
 )
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
