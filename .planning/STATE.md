@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 07-03-PLAN.md (observer, judge, auto-approval)
-last_updated: "2026-03-02T20:57:00Z"
+stopped_at: Completed 07-05-PLAN.md (conversational chat interface)
+last_updated: "2026-03-02T21:01:00Z"
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 29
-  completed_plans: 26
+  completed_plans: 28
 ---
 
 # Project State: Sophia
@@ -25,8 +25,8 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 
 **Phase 7: Agentic Orchestration & Editor Agent**
 - Status: In Progress
-- Current Plan: 3/5
-- Plans: 2/5 complete
+- Current Plan: 5/5
+- Plans: 4/5 complete
 
 ## Milestone Progress
 
@@ -38,9 +38,9 @@ See: .planning/PROJECT.md (updated 2025-02-25)
 | 4 | ● | 6/6 | 100% |
 | 5 | ● | 4/4 | 100% |
 | 6 | ● | 3/3 | 100% |
-| 7 | ◐ | 2/5 | 40% |
+| 7 | ◐ | 4/5 | 80% |
 
-Progress: █████████░ 90%
+Progress: █████████░ 97%
 
 ## Decision Log
 
@@ -147,6 +147,10 @@ Progress: █████████░ 90%
 | 2026-03-02 | AND logic for auto-approval (all 4 signals must pass) | Phase 07-03: conservative by default, not weighted threshold |
 | 2026-03-02 | Risk ordering as integer comparison | Phase 07-03: safe(0) <= sensitive(1) <= risky(2) for threshold comparison |
 | 2026-03-02 | Engagement trend from KPISnapshot slope (4 snapshots, 0.5pp) | Phase 07-03: requires 4 snapshots minimum, defaults to "stable" |
+| 2026-03-02 | Priority hierarchy for intent detection: commands > questions > general | Phase 07-05: explicit commands first, then questions, then general fallback |
+| 2026-03-02 | Original casing preserved in param extraction | Phase 07-05: lowered used for keyword matching, original for value extraction |
+| 2026-03-02 | Fuzzy match threshold 60 for client switching | Phase 07-05: lower than 90 creation threshold, more forgiving for chat context switching |
+| 2026-03-02 | Streaming cursor replaces dot-pulse during active response | Phase 07-05: blinking cursor appended to sophia message content while streaming |
 
 ## Accumulated Context
 
@@ -183,12 +187,13 @@ Progress: █████████░ 90%
 | 07-01 | 5min | 2 | 8 |
 | 07-02 | 5min | 2 | 2 |
 | 07-03 | 5min | 2 | 4 |
+| 07-05 | 9min | 2 | 7 |
 
 ## Last Session
 
-**Stopped at:** Completed 07-03-PLAN.md (observer, judge, auto-approval)
+**Stopped at:** Completed 07-05-PLAN.md (conversational chat interface)
 **Resume with:** Continue with 07-04-PLAN.md
 **Resume file:** .planning/phases/07-agentic-orchestration-editor-agent/07-04-PLAN.md
 
 ---
-*Last updated: 2026-03-02 after 07-03-PLAN.md execution*
+*Last updated: 2026-03-02 after 07-05-PLAN.md execution*
