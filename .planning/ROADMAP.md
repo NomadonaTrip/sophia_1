@@ -129,6 +129,27 @@ Plans:
 - [x] 06-02: Capability Discovery & Registry (Wave 1) [CPBL-01..05]
 - [x] 06-03: Client Email Notifications & Value Signals (Wave 2, depends on 06-01) [COMM-01..03]
 
+### Phase 7: Agentic Orchestration & Editor Agent
+**Goal**: Sophia operates as a truly autonomous agent through a daily Editor Agent orchestrator that manages research, content generation, quality judgment, and auto-approval — reducing operator time to <15 min/client/day
+**Depends on**: Phase 6
+**Requirements**: ORCH-01, ORCH-02, ORCH-03, ORCH-04, ORCH-05, ORCH-06, ORCH-07, ORCH-08, ORCH-09, ORCH-10
+**Success Criteria** (what must be TRUE):
+  1. Sophia runs a daily autonomous cycle per client: observe state, research if needed, generate content, judge quality, auto-approve or flag, extract learnings
+  2. Editor Agent evaluates each draft across 4 independent signals (voice confidence, gate pass rate, content risk, historical approval rate) and auto-approves only when ALL pass
+  3. Auto-approval is disabled during a 15-cycle burn-in period per client and suspends on 3+ false positives in 7 days
+  4. Persistent specialist agents accumulate client-specific context across cycles and improve over time
+  5. Safe read-only capabilities auto-acquire without operator approval; risky capabilities require approval
+  6. Operator can converse with Sophia via chat bar with real-time SSE-streamed responses, intent detection, and persistent conversation history
+  7. Every cycle stage creates a structured audit trail with decision traces
+**Plans**: 5 plans across 3 waves
+
+Plans:
+- [ ] 07-01-PLAN.md — Orchestrator models, schemas, specialist agent service, migration (Wave 1) [ORCH-06, ORCH-10]
+- [ ] 07-02-PLAN.md — Tiered skill governance: safe auto-acquire, risky require approval (Wave 1) [ORCH-07]
+- [ ] 07-03-PLAN.md — Observer, judge, auto-approval logic with burn-in and suspension (Wave 2, depends on 07-01) [ORCH-02, ORCH-04, ORCH-05, ORCH-09]
+- [ ] 07-04-PLAN.md — Editor Agent daily cycle orchestrator, scheduling, exception briefing, API (Wave 3, depends on 07-01, 07-03) [ORCH-01, ORCH-03, ORCH-10]
+- [ ] 07-05-PLAN.md — Chat integration: backend intent detection + SSE streaming + frontend wiring (Wave 2, depends on 07-01) [ORCH-08]
+
 ## Progress
 
 **Execution Order:**
@@ -141,13 +162,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Content Generation & Quality Gates | 4/4 | Complete | 2026-02-27 |
 | 4. Approval, Publishing & Recovery | 6/6 | Complete | 2026-02-28 |
 | 5. Performance Analytics & Evaluation | 4/4 | Complete | 2026-02-28 |
-| 6. Learning, Evolution & Client Communication | 2/3 | In progress | - |
-
-### Phase 7: Agentic Orchestration & Editor Agent
-**Goal**: Sophia operates as a truly autonomous agent through a daily Editor Agent orchestrator that manages research, content generation, quality judgment, and auto-approval — reducing operator time to <15 min/client/day
-**Depends on**: Phase 6
-**Requirements**: TBD
-**Plans**: 0 plans (run /gsd:plan-phase 7 to break down)
-
-Plans:
-- [ ] TBD (run /gsd:plan-phase 7 to break down)
+| 6. Learning, Evolution & Client Communication | 3/3 | Complete | 2026-03-01 |
+| 7. Agentic Orchestration & Editor Agent | 0/5 | Planned | - |

@@ -73,21 +73,21 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Learning & Self-Improvement
 
-- [ ] **LRNG-01**: Sophia can persist all learnings to the database and load into subsequent cycles (FR37)
-- [ ] **LRNG-02**: Sophia can deliver a daily standup briefing (FR38)
-- [ ] **LRNG-03**: Sophia can deliver a weekly strategic briefing with cross-client patterns (FR39)
-- [ ] **LRNG-04**: Sophia can extract and persist business insights from operator conversations (FR40)
-- [ ] **LRNG-05**: Sophia can measure her own improvement rate across three metric categories (FR41)
-- [ ] **LRNG-06**: Sophia can generate periodic intelligence reports (FR42)
-- [ ] **LRNG-07**: Cross-client pattern transfer surfaced by Sophia, applied only with operator approval (FR43)
+- [x] **LRNG-01**: Sophia can persist all learnings to the database and load into subsequent cycles (FR37)
+- [x] **LRNG-02**: Sophia can deliver a daily standup briefing (FR38)
+- [x] **LRNG-03**: Sophia can deliver a weekly strategic briefing with cross-client patterns (FR39)
+- [x] **LRNG-04**: Sophia can extract and persist business insights from operator conversations (FR40)
+- [x] **LRNG-05**: Sophia can measure her own improvement rate across three metric categories (FR41)
+- [x] **LRNG-06**: Sophia can generate periodic intelligence reports (FR42)
+- [x] **LRNG-07**: Cross-client pattern transfer surfaced by Sophia, applied only with operator approval (FR43)
 
 ### Capability Discovery
 
-- [ ] **CPBL-01**: Sophia can identify capability gaps during daily operations and search for solutions (FR44)
-- [ ] **CPBL-02**: Sophia can evaluate discovered capabilities using scored rubric (0-5) (FR45)
-- [ ] **CPBL-03**: Sophia can rank and present capability proposals with clear rationale (FR46)
-- [ ] **CPBL-04**: Operator can approve or reject any proposed installation (FR47)
-- [ ] **CPBL-05**: Sophia can maintain a registry of installed capabilities (FR48)
+- [x] **CPBL-01**: Sophia can identify capability gaps during daily operations and search for solutions (FR44)
+- [x] **CPBL-02**: Sophia can evaluate discovered capabilities using scored rubric (0-5) (FR45)
+- [x] **CPBL-03**: Sophia can rank and present capability proposals with clear rationale (FR46)
+- [x] **CPBL-04**: Operator can approve or reject any proposed installation (FR47)
+- [x] **CPBL-05**: Sophia can maintain a registry of installed capabilities (FR48)
 
 ### Quality & Safety
 
@@ -104,13 +104,26 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [x] **COMM-02**: Operator can configure notification frequency and thresholds per client (FR56)
 - [x] **COMM-03**: Sophia can generate value signal communications highlighting wins (FR57)
 
+### Agentic Orchestration
+
+- [ ] **ORCH-01**: Sophia runs a daily autonomous ReAct cycle per client via cron-scheduled Editor Agent (FR66)
+- [ ] **ORCH-02**: Editor Agent observes client state (posting history, engagement, competitor activity, research freshness) before deciding actions (FR67)
+- [ ] **ORCH-03**: Editor Agent sequences research, generation, quality judgment, and approval/rejection for each client (FR68)
+- [ ] **ORCH-04**: Editor Agent auto-approves high-confidence content without operator intervention (FR69)
+- [ ] **ORCH-05**: Editor Agent flags low-confidence or risky content for operator review with explanation (FR70)
+- [ ] **ORCH-06**: Persistent specialist subagents accumulate client-specific context across cycles (FR71)
+- [ ] **ORCH-07**: Tiered skill governance: safe skills auto-acquire, risky skills require operator approval (FR72)
+- [ ] **ORCH-08**: Chat input bar wired to real backend with context-aware routing to Editor Agent (FR73)
+- [ ] **ORCH-09**: Operator time reduced to <=15 min/client/day through auto-approval and exception-only briefings (FR74)
+- [ ] **ORCH-10**: Full cycle audit trail with structured decision traces per stage (FR75)
+
 ## v2 Requirements
 
 Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 
 - **VOICE-01**: Wake word detection + Whisper STT + TTS voice interface
 - **CLOUD-01**: Cloud migration from local hosting
-- **CLOUD-02**: Claude Code subscription → API transition
+- **CLOUD-02**: Claude Code subscription -> API transition
 - **PLAT-01**: LinkedIn publishing integration
 - **PLAT-02**: Google Business Profile integration
 - **PLAT-03**: TikTok integration
@@ -123,7 +136,7 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 
 | Feature | Reason |
 |---------|--------|
-| Client self-serve dashboard | Managed service model — clients never touch software |
+| Client self-serve dashboard | Managed service model -- clients never touch software |
 | Real-time chat / DM management | Phase 2, high complexity and liability |
 | AI image/video generation | Sophia describes visuals; generation is a separate step |
 | Mobile native app | Web-first, mobile later |
@@ -187,27 +200,37 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | EVAL-02 | Phase 5 | Complete |
 | EVAL-03 | Phase 5 | Complete |
 | EVAL-04 | Phase 5 | Complete |
-| LRNG-01 | Phase 6 | Pending |
-| LRNG-02 | Phase 6 | Pending |
-| LRNG-03 | Phase 6 | Pending |
-| LRNG-04 | Phase 6 | Pending |
-| LRNG-05 | Phase 6 | Pending |
-| LRNG-06 | Phase 6 | Pending |
-| LRNG-07 | Phase 6 | Pending |
-| CPBL-01 | Phase 6 | Pending |
-| CPBL-02 | Phase 6 | Pending |
-| CPBL-03 | Phase 6 | Pending |
-| CPBL-04 | Phase 6 | Pending |
-| CPBL-05 | Phase 6 | Pending |
+| LRNG-01 | Phase 6 | Complete |
+| LRNG-02 | Phase 6 | Complete |
+| LRNG-03 | Phase 6 | Complete |
+| LRNG-04 | Phase 6 | Complete |
+| LRNG-05 | Phase 6 | Complete |
+| LRNG-06 | Phase 6 | Complete |
+| LRNG-07 | Phase 6 | Complete |
+| CPBL-01 | Phase 6 | Complete |
+| CPBL-02 | Phase 6 | Complete |
+| CPBL-03 | Phase 6 | Complete |
+| CPBL-04 | Phase 6 | Complete |
+| CPBL-05 | Phase 6 | Complete |
 | COMM-01 | Phase 6 | Complete |
 | COMM-02 | Phase 6 | Complete |
 | COMM-03 | Phase 6 | Complete |
+| ORCH-01 | Phase 7 | Pending |
+| ORCH-02 | Phase 7 | Pending |
+| ORCH-03 | Phase 7 | Pending |
+| ORCH-04 | Phase 7 | Pending |
+| ORCH-05 | Phase 7 | Pending |
+| ORCH-06 | Phase 7 | Pending |
+| ORCH-07 | Phase 7 | Pending |
+| ORCH-08 | Phase 7 | Pending |
+| ORCH-09 | Phase 7 | Pending |
+| ORCH-10 | Phase 7 | Pending |
 
 **Coverage:**
-- v1 requirements: 67 total
-- Mapped to phases: 67
-- Unmapped: 0 ✓
+- v1 requirements: 77 total
+- Mapped to phases: 77
+- Unmapped: 0
 
 ---
 *Requirements defined: 2025-02-25*
-*Last updated: 2025-02-25 after roadmap creation*
+*Last updated: 2026-03-02 after Phase 7 planning*
