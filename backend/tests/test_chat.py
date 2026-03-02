@@ -1,10 +1,11 @@
 """Tests for chat intent detection and response routing.
 
 Covers all 6 intent types, conversation persistence, history ordering,
-and fuzzy client name matching for context switching.
+fuzzy client name matching for context switching, and cycle trigger wiring.
 """
 
 import asyncio
+from unittest.mock import patch
 
 import pytest
 
@@ -15,7 +16,7 @@ from sophia.orchestrator.chat import (
     get_conversation_history,
     handle_chat_message,
 )
-from sophia.orchestrator.models import ChatMessage
+from sophia.orchestrator.models import ChatMessage, CycleRun
 
 
 # ---------------------------------------------------------------------------
@@ -171,3 +172,77 @@ class TestClientSwitchFuzzyMatch:
         text_chunks = [c for c in chunks if c.get("type") == "text"]
         assert len(text_chunks) >= 1
         assert "Orban Forest" in text_chunks[0]["content"]
+
+
+# ---------------------------------------------------------------------------
+# Cycle Trigger Wiring Tests
+# ---------------------------------------------------------------------------
+
+
+class TestCycleTrigger:
+    """Tests for cycle trigger wiring: chat triggers actual CycleRun creation."""
+
+    @patch("sophia.orchestrator.chat.asyncio.ensure_future")
+    def test_cycle_trigger_creates_cycle_run(self, mock_ensure_future, db_session, sample_client):
+        """'Run cycle for Orban Forest' creates a CycleRun and returns cycle_id."""
+
+        async def _run():
+            chunks = []
+            async for chunk in handle_chat_message(
+                db_session, "run cycle for Orban Forest"
+            ):
+                chunks.append(chunk)
+            return chunks
+
+        loop = asyncio.new_event_loop()
+        try:
+            chunks = loop.run_until_complete(_run())
+        finally:
+            loop.close()
+
+        # Confirmation text should include "cycle #"
+        text_chunks = [c for c in chunks if c.get("type") == "text"]
+        assert len(text_chunks) >= 1
+        assert "cycle #" in text_chunks[0]["content"]
+        assert "Orban Forest" in text_chunks[0]["content"]
+
+        # CycleRun placeholder should have been created in DB
+        cycle_runs = db_session.query(CycleRun).filter(
+            CycleRun.client_id == sample_client.id
+        ).all()
+        assert len(cycle_runs) >= 1
+        assert cycle_runs[0].status == "pending"
+
+        # ensure_future was called (background task was queued)
+        mock_ensure_future.assert_called_once()
+
+    @patch("sophia.orchestrator.chat.asyncio.ensure_future")
+    def test_cycle_trigger_with_context_id(self, mock_ensure_future, db_session, sample_client):
+        """Cycle trigger uses client_context_id when no client name is given."""
+
+        async def _run():
+            chunks = []
+            async for chunk in handle_chat_message(
+                db_session, "run cycle", client_context_id=sample_client.id
+            ):
+                chunks.append(chunk)
+            return chunks
+
+        loop = asyncio.new_event_loop()
+        try:
+            chunks = loop.run_until_complete(_run())
+        finally:
+            loop.close()
+
+        # Confirmation text should include "cycle #"
+        text_chunks = [c for c in chunks if c.get("type") == "text"]
+        assert len(text_chunks) >= 1
+        assert "cycle #" in text_chunks[0]["content"]
+
+        # CycleRun placeholder should have been created
+        cycle_runs = db_session.query(CycleRun).filter(
+            CycleRun.client_id == sample_client.id
+        ).all()
+        assert len(cycle_runs) >= 1
+
+        mock_ensure_future.assert_called_once()

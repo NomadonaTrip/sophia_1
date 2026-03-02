@@ -9,6 +9,7 @@ All methods take a Session as first argument (dependency injection).
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from typing import AsyncGenerator, Optional
@@ -305,11 +306,16 @@ async def _handle_approval_action(
 async def _handle_cycle_trigger(
     db: Session, intent: dict, client_context_id: Optional[int]
 ) -> AsyncGenerator[dict, None]:
-    """Handle cycle trigger requests."""
+    """Handle cycle trigger requests by firing run_daily_cycle in the background.
+
+    Creates a placeholder CycleRun so the operator gets immediate confirmation
+    with a cycle_id, then launches the actual cycle via asyncio.ensure_future.
+    Follows the same fire-and-forget pattern as router.py trigger_cycle.
+    """
     client_name = intent["params"].get("client_name")
 
     if client_name:
-        # Try to find the client
+        # Try to find the client by fuzzy name match
         try:
             from sophia.intelligence.service import ClientService
             from rapidfuzz import fuzz
@@ -324,9 +330,10 @@ async def _handle_cycle_trigger(
                     best_match = client
 
             if best_match and best_score >= 60:
+                cycle_id = _create_and_fire_cycle(db, best_match.id)
                 yield {
                     "type": "text",
-                    "content": f"Starting content cycle for {best_match.name}... The cycle engine will observe, research, and generate content. Check the Morning Brief for results.",
+                    "content": f"Starting content cycle for {best_match.name} (cycle #{cycle_id})... The cycle engine will observe, research, and generate content. Check the Morning Brief for results.",
                 }
             else:
                 yield {"type": "text", "content": f"I couldn't find a client matching '{client_name}'. Please check the name and try again."}
@@ -337,17 +344,65 @@ async def _handle_cycle_trigger(
             from sophia.intelligence.service import ClientService
 
             client = ClientService.get_client(db, client_context_id)
+            cycle_id = _create_and_fire_cycle(db, client.id)
             yield {
                 "type": "text",
-                "content": f"Starting content cycle for {client.name}... The cycle engine will observe, research, and generate content. Check the Morning Brief for results.",
+                "content": f"Starting content cycle for {client.name} (cycle #{cycle_id})... The cycle engine will observe, research, and generate content. Check the Morning Brief for results.",
             }
-        except (ImportError, Exception):
+        except ImportError:
+            yield {"type": "text", "content": "Client service is not available. Please try again later."}
+        except Exception:
             yield {"type": "text", "content": "Starting content cycle for the current client... Check the Morning Brief for results."}
     else:
         yield {
             "type": "text",
             "content": "Which client should I run the cycle for? Please specify a client name, or switch to a client first.",
         }
+
+
+def _create_and_fire_cycle(db: Session, client_id: int) -> int:
+    """Create a placeholder CycleRun and fire run_daily_cycle in the background.
+
+    Returns the cycle_id so the caller can include it in the confirmation message.
+    Follows the same pattern as router.py trigger_cycle endpoint.
+    """
+    from sophia.orchestrator.models import CycleRun
+
+    # Create placeholder CycleRun synchronously so caller gets an ID
+    cycle = CycleRun(client_id=client_id, status="pending")
+    db.add(cycle)
+    db.flush()
+    cycle_id = cycle.id
+    db.commit()
+
+    # Fire-and-forget with fresh session
+    def _session_factory():
+        from sophia.db.engine import SessionLocal
+
+        return SessionLocal()
+
+    async def _run_cycle():
+        from sophia.orchestrator.editor import run_daily_cycle
+
+        session = _session_factory()
+        try:
+            placeholder = session.get(CycleRun, cycle_id)
+            if placeholder:
+                session.delete(placeholder)
+                session.flush()
+            await run_daily_cycle(session, client_id)
+            session.commit()
+        except Exception:
+            logger.exception(
+                "Background cycle failed for client %d", client_id
+            )
+            session.rollback()
+        finally:
+            session.close()
+
+    asyncio.ensure_future(_run_cycle())
+
+    return cycle_id
 
 
 async def _handle_status_query(
