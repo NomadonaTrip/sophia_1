@@ -106,9 +106,9 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Agentic Orchestration
 
-- [ ] **ORCH-01**: Sophia runs a daily autonomous ReAct cycle per client via cron-scheduled Editor Agent (FR66)
+- [x] **ORCH-01**: Sophia runs a daily autonomous ReAct cycle per client via cron-scheduled Editor Agent (FR66)
 - [x] **ORCH-02**: Editor Agent observes client state (posting history, engagement, competitor activity, research freshness) before deciding actions (FR67)
-- [ ] **ORCH-03**: Editor Agent sequences research, generation, quality judgment, and approval/rejection for each client (FR68)
+- [x] **ORCH-03**: Editor Agent sequences research, generation, quality judgment, and approval/rejection for each client (FR68)
 - [x] **ORCH-04**: Editor Agent auto-approves high-confidence content without operator intervention (FR69)
 - [x] **ORCH-05**: Editor Agent flags low-confidence or risky content for operator review with explanation (FR70)
 - [x] **ORCH-06**: Persistent specialist subagents accumulate client-specific context across cycles (FR71)
@@ -215,9 +215,9 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | COMM-01 | Phase 6 | Complete |
 | COMM-02 | Phase 6 | Complete |
 | COMM-03 | Phase 6 | Complete |
-| ORCH-01 | Phase 7 | Pending |
+| ORCH-01 | Phase 7 | Complete |
 | ORCH-02 | Phase 7 | Complete |
-| ORCH-03 | Phase 7 | Pending |
+| ORCH-03 | Phase 7 | Complete |
 | ORCH-04 | Phase 7 | Complete |
 | ORCH-05 | Phase 7 | Complete |
 | ORCH-06 | Phase 7 | Complete |
