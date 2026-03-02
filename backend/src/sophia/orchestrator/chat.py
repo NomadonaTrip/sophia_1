@@ -30,7 +30,7 @@ INTENT_TYPES = {
     "approval_action": ["approve", "reject", "skip"],
     "cycle_trigger": ["run cycle", "start cycle", "run daily", "generate content"],
     "status_query": ["status", "how is", "what's happening", "whats happening", "show me"],
-    "help": ["help", "what can you do", "commands"],
+    "help": ["what can you do", "show commands", "list commands", "/help"],
 }
 
 # Priority order: explicit commands first, then questions, then general
@@ -53,6 +53,10 @@ def detect_intent(message: str) -> dict:
         dict with keys: type (str), params (dict), confidence (float)
     """
     lower = message.lower().strip()
+
+    # Standalone "help" (exact or near-exact match)
+    if lower in ("help", "help me", "help?"):
+        return {"type": "help", "params": {}, "confidence": 0.8}
 
     for intent_type in _INTENT_PRIORITY:
         keywords = INTENT_TYPES[intent_type]
