@@ -172,11 +172,20 @@ def _notification_processor_job(session_factory: Callable) -> None:
 
 def _capability_gap_search_job(session_factory: Callable) -> None:
     """Thin wrapper: search for new MCP servers and Claude skills."""
+    from sophia.capabilities.service import process_open_gaps
+
     db = session_factory()
     try:
-        # Capability gap search: finds new tools Sophia could use
         logger.info("Capability gap search: scanning for new skills")
+        result = asyncio.run(process_open_gaps(db))
+        db.commit()
+        logger.info(
+            "Capability gap search complete: %d gaps processed, %d proposals created",
+            result.get("gaps_processed", 0),
+            result.get("proposals_created", 0),
+        )
     except Exception:
         logger.exception("Failed to run capability gap search")
+        db.rollback()
     finally:
         db.close()
