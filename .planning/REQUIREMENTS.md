@@ -111,11 +111,11 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 - [ ] **ORCH-03**: Editor Agent sequences research, generation, quality judgment, and approval/rejection for each client (FR68)
 - [ ] **ORCH-04**: Editor Agent auto-approves high-confidence content without operator intervention (FR69)
 - [ ] **ORCH-05**: Editor Agent flags low-confidence or risky content for operator review with explanation (FR70)
-- [ ] **ORCH-06**: Persistent specialist subagents accumulate client-specific context across cycles (FR71)
-- [ ] **ORCH-07**: Tiered skill governance: safe skills auto-acquire, risky skills require operator approval (FR72)
+- [x] **ORCH-06**: Persistent specialist subagents accumulate client-specific context across cycles (FR71)
+- [x] **ORCH-07**: Tiered skill governance: safe skills auto-acquire, risky skills require operator approval (FR72)
 - [ ] **ORCH-08**: Chat input bar wired to real backend with context-aware routing to Editor Agent (FR73)
 - [ ] **ORCH-09**: Operator time reduced to <=15 min/client/day through auto-approval and exception-only briefings (FR74)
-- [ ] **ORCH-10**: Full cycle audit trail with structured decision traces per stage (FR75)
+- [x] **ORCH-10**: Full cycle audit trail with structured decision traces per stage (FR75)
 
 ## v2 Requirements
 
@@ -220,11 +220,11 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | ORCH-03 | Phase 7 | Pending |
 | ORCH-04 | Phase 7 | Pending |
 | ORCH-05 | Phase 7 | Pending |
-| ORCH-06 | Phase 7 | Pending |
-| ORCH-07 | Phase 7 | Pending |
+| ORCH-06 | Phase 7 | Complete |
+| ORCH-07 | Phase 7 | Complete |
 | ORCH-08 | Phase 7 | Pending |
 | ORCH-09 | Phase 7 | Pending |
-| ORCH-10 | Phase 7 | Pending |
+| ORCH-10 | Phase 7 | Complete |
 
 **Coverage:**
 - v1 requirements: 77 total
