@@ -325,7 +325,7 @@ class TestEmailRendering:
             settings.notification_from_name = "Test Sender"
             mock_settings.return_value = settings
 
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 send_performance_report(
                     client_email="client@example.com",
                     client_name="Test Client",
@@ -356,7 +356,7 @@ class TestEmailRendering:
             settings.notification_from_name = "Test Sender"
             mock_settings.return_value = settings
 
-            result = asyncio.get_event_loop().run_until_complete(
+            result = asyncio.run(
                 send_performance_report(
                     client_email="client@example.com",
                     client_name="Test",

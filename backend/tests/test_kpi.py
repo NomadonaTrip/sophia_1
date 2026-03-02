@@ -95,6 +95,7 @@ class TestComputeWeeklyKPIs:
         # Create a draft and approval events
         draft = _make_draft(db_session, cid, status="approved")
 
+        event_time = datetime(2026, 2, 27, 12, 0, 0)
         for action in ["approved", "approved", "rejected"]:
             event = ApprovalEvent(
                 content_draft_id=draft.id,
@@ -103,6 +104,7 @@ class TestComputeWeeklyKPIs:
                 actor="tayo",
                 old_status="in_review",
                 new_status=action,
+                created_at=event_time,
             )
             db_session.add(event)
         db_session.flush()
