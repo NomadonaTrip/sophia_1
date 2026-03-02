@@ -42,8 +42,8 @@ class ContentDraft(TimestampMixin, Base):
         Integer, ForeignKey("clients.id"), nullable=False, index=True
     )
     cycle_id: Mapped[Optional[int]] = mapped_column(
-        Integer, nullable=True
-    )  # FK to cycle_runs.id deferred until cycle model exists
+        Integer, ForeignKey("cycle_runs.id"), nullable=True
+    )
 
     # Platform and type
     platform: Mapped[str] = mapped_column(
