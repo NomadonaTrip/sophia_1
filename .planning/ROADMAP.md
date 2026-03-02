@@ -18,6 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 4: Approval, Publishing & Recovery** - CLI/web/Telegram approval, automated Facebook+Instagram publishing, scheduling, content recovery
 - [ ] **Phase 5: Performance Analytics & Evaluation** - Engagement data collection, KPI tracking, campaign metrics, decision traces, outcome attribution
 - [ ] **Phase 6: Learning, Evolution & Client Communication** - Persistent learning, briefings, capability discovery, cross-client patterns, client email notifications
+- [ ] **Phase 7: Agentic Orchestration & Editor Agent** - Daily ReAct orchestrator, Editor Agent hierarchy, persistent specialist subagents, autonomous skill acquisition
 
 ## Phase Details
 
@@ -131,7 +132,7 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -141,3 +142,12 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6
 | 4. Approval, Publishing & Recovery | 6/6 | Complete | 2026-02-28 |
 | 5. Performance Analytics & Evaluation | 4/4 | Complete | 2026-02-28 |
 | 6. Learning, Evolution & Client Communication | 2/3 | In progress | - |
+
+### Phase 7: Agentic Orchestration & Editor Agent
+**Goal**: Sophia operates as a truly autonomous agent through a daily Editor Agent orchestrator that manages research, content generation, quality judgment, and auto-approval — reducing operator time to <15 min/client/day
+**Depends on**: Phase 6
+**Requirements**: TBD
+**Plans**: 0 plans (run /gsd:plan-phase 7 to break down)
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 7 to break down)

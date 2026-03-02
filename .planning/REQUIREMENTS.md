@@ -100,9 +100,9 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 
 ### Client Communication
 
-- [ ] **COMM-01**: Sophia can send email notifications to clients reporting performance (FR55)
-- [ ] **COMM-02**: Operator can configure notification frequency and thresholds per client (FR56)
-- [ ] **COMM-03**: Sophia can generate value signal communications highlighting wins (FR57)
+- [x] **COMM-01**: Sophia can send email notifications to clients reporting performance (FR55)
+- [x] **COMM-02**: Operator can configure notification frequency and thresholds per client (FR56)
+- [x] **COMM-03**: Sophia can generate value signal communications highlighting wins (FR57)
 
 ## v2 Requirements
 
@@ -199,9 +199,9 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | CPBL-03 | Phase 6 | Pending |
 | CPBL-04 | Phase 6 | Pending |
 | CPBL-05 | Phase 6 | Pending |
-| COMM-01 | Phase 6 | Pending |
-| COMM-02 | Phase 6 | Pending |
-| COMM-03 | Phase 6 | Pending |
+| COMM-01 | Phase 6 | Complete |
+| COMM-02 | Phase 6 | Complete |
+| COMM-03 | Phase 6 | Complete |
 
 **Coverage:**
 - v1 requirements: 67 total
