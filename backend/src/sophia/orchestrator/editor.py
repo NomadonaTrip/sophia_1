@@ -282,7 +282,17 @@ async def run_daily_cycle(
 
                 if judgment.auto_approve:
                     try:
-                        from sophia.approval.service import approve_draft
+                        from sophia.approval.service import (
+                            approve_draft,
+                            transition_draft,
+                        )
+
+                        # Navigate state machine: draft -> in_review -> approved
+                        current_status = getattr(draft, "status", "draft")
+                        if current_status == "draft":
+                            transition_draft(
+                                db, draft.id, "in_review", actor="sophia:editor"
+                            )
 
                         approve_draft(
                             db,
