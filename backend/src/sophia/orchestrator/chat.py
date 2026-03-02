@@ -484,22 +484,49 @@ async def _handle_general(
     db: Session, message: str, client_context_id: Optional[int]
 ) -> AsyncGenerator[dict, None]:
     """Handle general messages with contextual awareness."""
-    parts = []
+    lower = message.lower()
 
+    # Onboarding / new client intent
+    if any(kw in lower for kw in ["onboard", "new client", "add a client", "add client", "create client"]):
+        yield {
+            "type": "text",
+            "content": (
+                "To onboard a new client, the operator (Tayo) adds them through the Client Foundation. "
+                "Here's what's needed:\n\n"
+                "1. **Client name** and business type\n"
+                "2. **Industry vertical** (e.g., dental, real estate, bakery)\n"
+                "3. **Geographic scope** (e.g., Southern Ontario)\n"
+                "4. **Voice materials** — sample posts, brand guidelines, tone preferences\n"
+                "5. **Competitors** to monitor\n\n"
+                "Once onboarded, I'll start building their intelligence profile and can begin "
+                "generating content after voice calibration.\n\n"
+                "Use the **Clients** tab above to manage clients, or say 'switch to [client name]' "
+                "to load an existing client's context."
+            ),
+        }
+        return
+
+    # Client context-aware response
+    client_name = None
     if client_context_id:
         try:
             from sophia.intelligence.service import ClientService
 
             client = ClientService.get_client(db, client_context_id)
-            parts.append(f"Noted regarding {client.name}.")
+            client_name = client.name
         except (ImportError, Exception):
             pass
 
-    if not parts:
-        parts.append("I understood that as a general message.")
-
-    # Add helpful suggestions
-    parts.append("Try 'help' for available commands, or switch to a client for context-aware responses.")
+    # Build a contextual response
+    parts = []
+    if client_name:
+        parts.append(f"Regarding {client_name}: I've noted your message.")
+        parts.append(f"For specific actions, try: 'How is {client_name} doing?' for status, "
+                     f"'Run cycle for {client_name}' to generate content, or 'Approve/Reject draft #N'.")
+    else:
+        parts.append("I hear you! To get the most out of our conversation, try switching to a client first "
+                     "(e.g., 'Switch to Orban Forest'). That way I can give you context-aware responses.")
+        parts.append("\nSay 'what can you do' for a full list of commands.")
 
     yield {"type": "text", "content": " ".join(parts)}
 
