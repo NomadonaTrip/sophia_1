@@ -107,14 +107,14 @@ Requirements for Sprint 0 + Sprint 1. Each maps to roadmap phases.
 ### Agentic Orchestration
 
 - [ ] **ORCH-01**: Sophia runs a daily autonomous ReAct cycle per client via cron-scheduled Editor Agent (FR66)
-- [ ] **ORCH-02**: Editor Agent observes client state (posting history, engagement, competitor activity, research freshness) before deciding actions (FR67)
+- [x] **ORCH-02**: Editor Agent observes client state (posting history, engagement, competitor activity, research freshness) before deciding actions (FR67)
 - [ ] **ORCH-03**: Editor Agent sequences research, generation, quality judgment, and approval/rejection for each client (FR68)
-- [ ] **ORCH-04**: Editor Agent auto-approves high-confidence content without operator intervention (FR69)
-- [ ] **ORCH-05**: Editor Agent flags low-confidence or risky content for operator review with explanation (FR70)
+- [x] **ORCH-04**: Editor Agent auto-approves high-confidence content without operator intervention (FR69)
+- [x] **ORCH-05**: Editor Agent flags low-confidence or risky content for operator review with explanation (FR70)
 - [x] **ORCH-06**: Persistent specialist subagents accumulate client-specific context across cycles (FR71)
 - [x] **ORCH-07**: Tiered skill governance: safe skills auto-acquire, risky skills require operator approval (FR72)
 - [ ] **ORCH-08**: Chat input bar wired to real backend with context-aware routing to Editor Agent (FR73)
-- [ ] **ORCH-09**: Operator time reduced to <=15 min/client/day through auto-approval and exception-only briefings (FR74)
+- [x] **ORCH-09**: Operator time reduced to <=15 min/client/day through auto-approval and exception-only briefings (FR74)
 - [x] **ORCH-10**: Full cycle audit trail with structured decision traces per stage (FR75)
 
 ## v2 Requirements
@@ -216,14 +216,14 @@ Deferred to Sprint 2 / Phase 2. Not in current roadmap.
 | COMM-02 | Phase 6 | Complete |
 | COMM-03 | Phase 6 | Complete |
 | ORCH-01 | Phase 7 | Pending |
-| ORCH-02 | Phase 7 | Pending |
+| ORCH-02 | Phase 7 | Complete |
 | ORCH-03 | Phase 7 | Pending |
-| ORCH-04 | Phase 7 | Pending |
-| ORCH-05 | Phase 7 | Pending |
+| ORCH-04 | Phase 7 | Complete |
+| ORCH-05 | Phase 7 | Complete |
 | ORCH-06 | Phase 7 | Complete |
 | ORCH-07 | Phase 7 | Complete |
 | ORCH-08 | Phase 7 | Pending |
-| ORCH-09 | Phase 7 | Pending |
+| ORCH-09 | Phase 7 | Complete |
 | ORCH-10 | Phase 7 | Complete |
 
 **Coverage:**
