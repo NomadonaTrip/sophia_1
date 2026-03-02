@@ -57,7 +57,7 @@ def detect_intent(message: str) -> dict:
         keywords = INTENT_TYPES[intent_type]
         for keyword in keywords:
             if keyword in lower:
-                params = _extract_params(intent_type, lower, keyword)
+                params = _extract_params(intent_type, message.strip(), lower, keyword)
                 return {
                     "type": intent_type,
                     "params": params,
@@ -67,29 +67,33 @@ def detect_intent(message: str) -> dict:
     return {"type": "general", "params": {}, "confidence": 0.5}
 
 
-def _extract_params(intent_type: str, message: str, matched_keyword: str) -> dict:
-    """Extract parameters from message based on intent type."""
+def _extract_params(intent_type: str, original: str, lowered: str, matched_keyword: str) -> dict:
+    """Extract parameters from message based on intent type.
+
+    Uses lowered message for keyword index finding but extracts values
+    from the original message to preserve casing.
+    """
     params: dict = {}
 
     if intent_type == "client_switch":
-        # Extract client name after the keyword
-        idx = message.index(matched_keyword) + len(matched_keyword)
-        client_name = message[idx:].strip().strip("'\".,!?")
+        # Extract client name after the keyword (preserve original casing)
+        idx = lowered.index(matched_keyword) + len(matched_keyword)
+        client_name = original[idx:].strip().strip("'\".,!?")
         if client_name:
             params["client_name"] = client_name
 
     elif intent_type == "approval_action":
         # Extract action and optional draft ID
-        if "approve" in message:
+        if "approve" in lowered:
             params["action"] = "approve"
-        elif "reject" in message:
+        elif "reject" in lowered:
             params["action"] = "reject"
-        elif "skip" in message:
+        elif "skip" in lowered:
             params["action"] = "skip"
         # Look for draft ID (e.g., "approve draft 5", "approve #5")
         import re
 
-        id_match = re.search(r"(?:draft\s*#?|#)(\d+)", message)
+        id_match = re.search(r"(?:draft\s*#?|#)(\d+)", lowered)
         if id_match:
             params["draft_id"] = int(id_match.group(1))
 
@@ -97,7 +101,7 @@ def _extract_params(intent_type: str, message: str, matched_keyword: str) -> dic
         # Extract client name if present (e.g., "run cycle for Shane")
         import re
 
-        for_match = re.search(r"(?:for|on)\s+(.+?)(?:\s*$|[.!?])", message)
+        for_match = re.search(r"(?:for|on)\s+(.+?)(?:\s*$|[.!?])", original)
         if for_match:
             params["client_name"] = for_match.group(1).strip().strip("'\"")
 

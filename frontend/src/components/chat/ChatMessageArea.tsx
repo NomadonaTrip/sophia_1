@@ -47,7 +47,13 @@ export function ChatMessageArea({ messages, isThinking = false }: ChatMessageAre
               Sophia
             </span>
           )}
-          <p>{msg.content}</p>
+          <p>
+            {msg.content}
+            {/* Blinking cursor for streaming sophia messages */}
+            {isThinking && msg.role === 'sophia' && msg.id === messages[messages.length - 1]?.id && (
+              <span className="inline-block w-[2px] h-[14px] bg-sage-400 ml-0.5 align-text-bottom animate-pulse" />
+            )}
+          </p>
           <span className="text-[10px] text-text-muted mt-1 block">
             {msg.timestamp.toLocaleTimeString([], {
               hour: '2-digit',
@@ -57,7 +63,8 @@ export function ChatMessageArea({ messages, isThinking = false }: ChatMessageAre
         </div>
       ))}
 
-      {isThinking && (
+      {/* Show dot-pulse thinking indicator only when no streaming content is being displayed */}
+      {isThinking && (messages.length === 0 || messages[messages.length - 1]?.role !== 'sophia') && (
         <div className="mr-auto bg-midnight-800 border border-midnight-700 border-l-[3px] border-l-sage-500 rounded-[14px] px-3 py-2">
           <span className="font-sophia italic text-sage-300 text-xs block mb-1">
             Sophia

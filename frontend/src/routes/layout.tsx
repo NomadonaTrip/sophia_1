@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router'
 import {
   LayoutGrid,
@@ -14,12 +14,13 @@ import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { HealthStrip } from '@/components/health/HealthStrip'
 import { ChatInputBar } from '@/components/chat/ChatInputBar'
-import { ChatMessageArea, type ChatMessage } from '@/components/chat/ChatMessageArea'
+import { ChatMessageArea } from '@/components/chat/ChatMessageArea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { NetworkErrorBanner } from '@/components/approval/NetworkErrorBanner'
 import { StaleContentToastContainer } from '@/components/approval/StaleContentToast'
 import { VoiceToastContainer } from '@/components/voice/VoiceToast'
 import { useSSE } from '@/hooks/useSSE'
+import { useChat } from '@/hooks/useChat'
 
 const NAV_TABS = [
   { label: 'Morning Brief', path: '/morning-brief', icon: LayoutGrid },
@@ -30,62 +31,19 @@ const NAV_TABS = [
   { label: 'Session Close', path: '/session-close', icon: LogOut },
 ] as const
 
-const SOPHIA_RESPONSES = [
-  "I heard you! Chat integration is coming in a future sprint. For now, I'm focused on getting your morning brief ready.",
-  "Got it, Tayo. Full conversational mode is on the roadmap -- for now, explore the tabs above to review your clients.",
-  "Noted! I'll have full chat capabilities soon. In the meantime, the approval queue has items ready for your review.",
-  "Thanks for the message! I'm still warming up my conversational side. Check the morning brief for today's portfolio overview.",
-  "I appreciate the input! Deep chat is coming soon. Right now, your 16 clients are looking good across the board.",
-]
-
-let messageIdCounter = 0
-function nextId() {
-  return `msg-${++messageIdCounter}`
-}
-
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isThinking, setIsThinking] = useState(false)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
   const [panelCollapsed, setPanelCollapsed] = useState(false)
-  const responseIndexRef = useRef(0)
+
+  // Real chat hook -- replaces hardcoded responses with backend SSE streaming
+  const { messages, isThinking, sendMessage } = useChat()
 
   // Activate SSE connection for real-time sync
   useSSE()
 
   const currentPath =
     location.pathname === '/' ? '/morning-brief' : location.pathname
-
-  const handleSend = useCallback(
-    (message: string) => {
-      // Add user message
-      const userMsg: ChatMessage = {
-        id: nextId(),
-        role: 'user',
-        content: message,
-        timestamp: new Date(),
-      }
-      setMessages((prev) => [...prev, userMsg])
-      setIsThinking(true)
-
-      // Simulate Sophia's response after a brief delay
-      setTimeout(() => {
-        const response = SOPHIA_RESPONSES[responseIndexRef.current % SOPHIA_RESPONSES.length]
-        responseIndexRef.current++
-
-        const sophiaMsg: ChatMessage = {
-          id: nextId(),
-          role: 'sophia',
-          content: response,
-          timestamp: new Date(),
-        }
-        setMessages((prev) => [...prev, sophiaMsg])
-        setIsThinking(false)
-      }, 1500)
-    },
-    [],
-  )
 
   return (
     <div className="flex min-h-screen flex-col bg-midnight-900">
@@ -197,7 +155,7 @@ export function Layout() {
       </main>
 
       {/* Fixed bottom chat input */}
-      <ChatInputBar onSend={handleSend} isThinking={isThinking} />
+      <ChatInputBar onSend={sendMessage} isThinking={isThinking} />
     </div>
   )
 }
