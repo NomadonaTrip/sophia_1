@@ -43,15 +43,14 @@ content_router = APIRouter(prefix="/api/content", tags=["content"])
 
 
 def _get_db():
-    """Placeholder DB dependency.
+    """Yield a SQLAlchemy session. Lazy-imports engine to avoid slow NTFS imports at startup."""
+    from sophia.db.engine import SessionLocal
 
-    In production, this yields a SQLAlchemy session from the engine.
-    Wired during app assembly (same pattern as research router).
-    """
-    raise NotImplementedError(
-        "DB dependency not wired. Call content_router.dependency_overrides "
-        "or wire via app assembly."
-    )
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 # -- Request/Response schemas -------------------------------------------------

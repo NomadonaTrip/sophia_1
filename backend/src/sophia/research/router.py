@@ -37,16 +37,14 @@ def get_source_registry() -> MCPSourceRegistry:
 
 
 def _get_db_session():
-    """Get a database session.
+    """Yield a SQLAlchemy session. Lazy-imports engine to avoid slow NTFS imports at startup."""
+    from sophia.db.engine import SessionLocal
 
-    This is a placeholder that will be replaced with proper dependency
-    injection when the FastAPI app is assembled. For now, raises an
-    error to make the dependency explicit.
-    """
-    raise NotImplementedError(
-        "Database session dependency not configured. "
-        "Wire get_db_session() when assembling the FastAPI app."
-    )
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @router.post("/{client_id}/cycle", response_model=ResearchDigest)
