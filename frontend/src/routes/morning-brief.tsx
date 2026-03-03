@@ -1,5 +1,7 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { AnimatePresence, motion } from 'motion/react'
+import { apiFetch } from '@/lib/api'
 import { SophiaCommentary } from '@/components/chat/SophiaCommentary'
 import { SessionSummary } from '@/components/session/SessionSummary'
 import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid'
@@ -7,26 +9,6 @@ import { InsightCard } from '@/components/portfolio/InsightCard'
 import { ClientDetailPanel } from '@/components/client/ClientDetailPanel'
 import type { ClientData } from '@/components/portfolio/ClientTile'
 import type { ContentDraft } from '@/components/approval/ContentItem'
-
-// Demo client data
-const DEMO_CLIENTS: ClientData[] = [
-  { id: 1, name: "Maple & Main Bakery", status: 'cruising', postCount: 12, engagementRate: 4.2, trend: 'up', voiceMatchPct: 91, sparkline: [3, 4, 3, 5, 4, 5] },
-  { id: 2, name: "Shane's Landscaping", status: 'attention', postCount: 3, engagementRate: 1.1, trend: 'down', voiceMatchPct: 72, sparkline: [4, 3, 2, 2, 1, 1] },
-  { id: 3, name: "Harbour View Spa", status: 'calibrating', postCount: 8, engagementRate: 3.0, trend: 'flat', voiceMatchPct: 84, sparkline: [3, 3, 4, 3, 3, 3] },
-  { id: 4, name: "Peak Fitness Studio", status: 'cruising', postCount: 10, engagementRate: 5.1, trend: 'up', voiceMatchPct: 88, sparkline: [3, 4, 4, 5, 5, 6] },
-  { id: 5, name: "Birchwood Dental", status: 'cruising', postCount: 6, engagementRate: 2.8, trend: 'flat', voiceMatchPct: 90, sparkline: [3, 3, 3, 3, 3, 3] },
-  { id: 6, name: "Anchor Property Mgmt", status: 'cruising', postCount: 9, engagementRate: 3.5, trend: 'up', voiceMatchPct: 86, sparkline: [2, 3, 3, 4, 3, 4] },
-  { id: 7, name: "Lakeside Auto Care", status: 'cruising', postCount: 7, engagementRate: 2.4, trend: 'flat', voiceMatchPct: 93, sparkline: [2, 2, 3, 2, 3, 2] },
-  { id: 8, name: "Dundas Valley Vet", status: 'calibrating', postCount: 5, engagementRate: 2.1, trend: 'down', voiceMatchPct: 79, sparkline: [3, 3, 2, 2, 2, 2] },
-  { id: 9, name: "Stone Road Accounting", status: 'calibrating', postCount: 4, engagementRate: 1.8, trend: 'flat', voiceMatchPct: 81, sparkline: [2, 2, 2, 2, 2, 2] },
-  { id: 10, name: "Waterdown Wellness", status: 'cruising', postCount: 11, engagementRate: 4.7, trend: 'up', voiceMatchPct: 89, sparkline: [3, 4, 4, 5, 5, 5] },
-  { id: 11, name: "Binbrook Plumbing", status: 'cruising', postCount: 8, engagementRate: 3.1, trend: 'flat', voiceMatchPct: 87, sparkline: [3, 3, 3, 3, 3, 3] },
-  { id: 12, name: "Grimsby Garden Centre", status: 'cruising', postCount: 14, engagementRate: 5.3, trend: 'up', voiceMatchPct: 94, sparkline: [4, 4, 5, 5, 5, 6] },
-  { id: 13, name: "Stoney Creek Electric", status: 'cruising', postCount: 6, engagementRate: 2.5, trend: 'flat', voiceMatchPct: 85, sparkline: [2, 3, 2, 3, 2, 3] },
-  { id: 14, name: "Ancaster Home Reno", status: 'cruising', postCount: 9, engagementRate: 3.8, trend: 'up', voiceMatchPct: 88, sparkline: [3, 3, 4, 4, 4, 4] },
-  { id: 15, name: "Flamborough Farrier", status: 'cruising', postCount: 5, engagementRate: 6.2, trend: 'up', voiceMatchPct: 91, sparkline: [4, 5, 5, 6, 6, 7] },
-  { id: 16, name: "Hamilton Harbour Tours", status: 'cruising', postCount: 4, engagementRate: 3.9, trend: 'flat', voiceMatchPct: 82, sparkline: [3, 4, 4, 4, 4, 4] },
-]
 
 // Demo drafts per client
 const DEMO_DRAFTS: Record<number, ContentDraft[]> = {
@@ -80,11 +62,16 @@ const DEMO_DRAFTS: Record<number, ContentDraft[]> = {
 }
 
 export function MorningBrief() {
+  const { data: clients = [], isLoading } = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => apiFetch<ClientData[]>('/clients'),
+  })
+
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
   const [postsRemaining, setPostsRemaining] = useState(8)
   const [rejectionCounts] = useState<Record<number, number>>({})
 
-  const selectedClient = DEMO_CLIENTS.find((c) => c.id === selectedClientId) ?? null
+  const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null
   const clientDrafts = selectedClientId ? (DEMO_DRAFTS[selectedClientId] ?? []) : []
 
   const showSessionSummary = postsRemaining === 0
@@ -130,7 +117,7 @@ export function MorningBrief() {
       {clientsNeedingCalibration.length > 0 && (
         <SophiaCommentary title="Calibration Suggestion" variant="compact">
           I've noticed you've rejected several posts for{' '}
-          {DEMO_CLIENTS.find((c) => c.id === clientsNeedingCalibration[0])?.name ?? 'a client'}.
+          {clients.find((c) => c.id === clientsNeedingCalibration[0])?.name ?? 'a client'}.
           Would you like to enter calibration, write a manual draft, or skip this post?
         </SophiaCommentary>
       )}
@@ -156,9 +143,10 @@ export function MorningBrief() {
 
       {/* Portfolio grid */}
       <PortfolioGrid
-        clients={DEMO_CLIENTS}
+        clients={clients}
         selectedClientId={selectedClientId ?? undefined}
         onClientSelect={handleClientSelect}
+        isLoading={isLoading}
       />
 
       {/* Inline client detail panel (expands below grid, no page navigation) */}

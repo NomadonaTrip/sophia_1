@@ -1,18 +1,11 @@
 import { useState, useCallback } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { apiFetch } from '@/lib/api'
 import { ClientDetailPanel } from '@/components/client/ClientDetailPanel'
 import { PortfolioGrid } from '@/components/portfolio/PortfolioGrid'
 import { RecoveryDialog } from '@/components/approval/RecoveryDialog'
 import type { ClientData } from '@/components/portfolio/ClientTile'
 import type { ContentDraft } from '@/components/approval/ContentItem'
-
-// Demo client data
-const DEMO_CLIENTS: ClientData[] = [
-  { id: 1, name: "Maple & Main Bakery", status: 'cruising', postCount: 12, engagementRate: 4.2, trend: 'up', voiceMatchPct: 91, sparkline: [3, 4, 3, 5, 4, 5] },
-  { id: 2, name: "Shane's Landscaping", status: 'attention', postCount: 3, engagementRate: 1.1, trend: 'down', voiceMatchPct: 72, sparkline: [4, 3, 2, 2, 1, 1] },
-  { id: 3, name: "Harbour View Spa", status: 'calibrating', postCount: 8, engagementRate: 3.0, trend: 'flat', voiceMatchPct: 84, sparkline: [3, 3, 4, 3, 3, 3] },
-  { id: 4, name: "Peak Fitness Studio", status: 'cruising', postCount: 10, engagementRate: 5.1, trend: 'up', voiceMatchPct: 88, sparkline: [3, 4, 4, 5, 5, 6] },
-  { id: 5, name: "Birchwood Dental", status: 'cruising', postCount: 6, engagementRate: 2.8, trend: 'flat', voiceMatchPct: 90, sparkline: [3, 3, 3, 3, 3, 3] },
-]
 
 // Demo drafts for selected client
 const DEMO_DRAFTS: ContentDraft[] = [
@@ -50,10 +43,15 @@ const DEMO_DRAFTS: ContentDraft[] = [
 ]
 
 export function ClientDrillDown() {
+  const { data: clients = [], isLoading } = useQuery({
+    queryKey: ['clients'],
+    queryFn: () => apiFetch<ClientData[]>('/clients'),
+  })
+
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null)
   const [recoveryDraftId, setRecoveryDraftId] = useState<number | null>(null)
 
-  const selectedClient = DEMO_CLIENTS.find((c) => c.id === selectedClientId) ?? null
+  const selectedClient = clients.find((c) => c.id === selectedClientId) ?? null
   const clientDrafts = selectedClientId ? DEMO_DRAFTS.filter((d) => d.client_id === selectedClientId) : []
   const recoveryDraft = recoveryDraftId ? DEMO_DRAFTS.find((d) => d.id === recoveryDraftId) : null
 
@@ -75,9 +73,10 @@ export function ClientDrillDown() {
       </div>
 
       <PortfolioGrid
-        clients={DEMO_CLIENTS}
+        clients={clients}
         selectedClientId={selectedClientId ?? undefined}
         onClientSelect={handleClientSelect}
+        isLoading={isLoading}
       />
 
       <ClientDetailPanel
