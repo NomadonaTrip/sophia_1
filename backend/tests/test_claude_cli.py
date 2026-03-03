@@ -15,6 +15,11 @@ from sophia.orchestrator.claude_cli import (
     _parse_action_tags,
     build_system_prompt,
     _fallback_response,
+    _action_update_client,
+    _action_archive_client,
+    _action_add_voice_material,
+    _action_add_intelligence,
+    _action_learn,
 )
 from sophia.orchestrator.chat import get_conversation_history, handle_chat_message
 from sophia.orchestrator.models import ChatMessage
@@ -96,6 +101,57 @@ class TestParseActionTags:
         assert "[ACTION:" not in clean
         assert "Creating the client now." in clean
 
+    def test_update_client_action_via_tags(self):
+        """update_client tag parses client ID and field=value pairs."""
+        text = "Updating now.\n[ACTION:update_client:5:business_description=A bakery:geography_area=Toronto]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "update_client"
+        assert actions[0]["args"] == ["5", "business_description=A bakery", "geography_area=Toronto"]
+        assert "[ACTION:" not in clean
+
+    def test_archive_client_action_via_tags(self):
+        """archive_client tag parses client ID."""
+        text = "Archiving the client.\n[ACTION:archive_client:3]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "archive_client"
+        assert actions[0]["args"] == ["3"]
+
+    def test_add_voice_material_action_via_tags(self):
+        """add_voice_material tag parses client ID, source type, and content."""
+        text = "Storing material.\n[ACTION:add_voice_material:5:operator_description:We are friendly and fun]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "add_voice_material"
+        assert actions[0]["args"] == ["5", "operator_description", "We are friendly and fun"]
+        assert "[ACTION:" not in clean
+
+    def test_add_intelligence_action_via_tags(self):
+        """add_intelligence tag parses client ID, domain, and fact."""
+        text = "Noted.\n[ACTION:add_intelligence:3:business:Open since 2019]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "add_intelligence"
+        assert actions[0]["args"] == ["3", "business", "Open since 2019"]
+
+    def test_learn_action_via_tags(self):
+        """learn tag parses domain and fact."""
+        text = "Got it.\n[ACTION:learn:customers:Mostly homeowners aged 35-55]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "learn"
+        assert actions[0]["args"] == ["customers", "Mostly homeowners aged 35-55"]
+
+    def test_learn_action_with_colons_in_fact(self):
+        """learn tag rejoins fact containing colons."""
+        text = "[ACTION:learn:business:Hours: Mon-Fri 9:00-5:00]"
+        clean, actions = _parse_action_tags(text)
+        assert len(actions) == 1
+        assert actions[0]["verb"] == "learn"
+        # _parse_action_tags strips each arg segment after splitting on ':'
+        assert actions[0]["args"] == ["business", "Hours", "Mon-Fri 9", "00-5", "00"]
+
 
 # ---------------------------------------------------------------------------
 # System Prompt Building
@@ -136,6 +192,16 @@ class TestBuildSystemPrompt:
         prompt = build_system_prompt(db_session)
         assert "[ACTION:create_client:CLIENT_NAME:INDUSTRY]" in prompt
 
+    def test_prompt_includes_update_client_action(self, db_session):
+        """Prompt includes update_client action with field=value syntax."""
+        prompt = build_system_prompt(db_session)
+        assert "[ACTION:update_client:" in prompt
+
+    def test_prompt_includes_archive_client_action(self, db_session):
+        """Prompt includes archive_client action."""
+        prompt = build_system_prompt(db_session)
+        assert "[ACTION:archive_client:CLIENT_ID]" in prompt
+
     def test_prompt_includes_agentic_section(self, db_session):
         """Prompt includes the 'How You Work' agentic tool-use instructions."""
         prompt = build_system_prompt(db_session)
@@ -144,6 +210,28 @@ class TestBuildSystemPrompt:
         assert "WebSearch" in prompt
         assert "WebFetch" in prompt
         assert "chain multiple tool calls" in prompt
+
+    def test_prompt_includes_add_voice_material_action(self, db_session):
+        """Prompt includes add_voice_material action tag."""
+        prompt = build_system_prompt(db_session)
+        assert "[ACTION:add_voice_material:CLIENT_ID:SOURCE_TYPE:CONTENT]" in prompt
+
+    def test_prompt_includes_add_intelligence_action(self, db_session):
+        """Prompt includes add_intelligence action tag."""
+        prompt = build_system_prompt(db_session)
+        assert "[ACTION:add_intelligence:CLIENT_ID:DOMAIN:FACT]" in prompt
+
+    def test_prompt_includes_learn_action(self, db_session):
+        """Prompt includes learn action tag."""
+        prompt = build_system_prompt(db_session)
+        assert "[ACTION:learn:DOMAIN:FACT]" in prompt
+
+    def test_prompt_includes_learning_instructions(self, db_session):
+        """Prompt includes the Learning & Context Extraction section."""
+        prompt = build_system_prompt(db_session)
+        assert "## Learning & Context Extraction" in prompt
+        assert "operator:conversation" not in prompt or "operator" in prompt
+        assert "concise and atomic" in prompt
 
     def test_prompt_history_limit_20(self, db_session):
         """Conversation history is limited to 20 messages."""
@@ -306,3 +394,126 @@ class TestChatIntegration:
         assert messages[0].role == "user"
         assert messages[1].role == "sophia"
         assert messages[1].content == ""
+
+
+# ---------------------------------------------------------------------------
+# Action Handler Execution
+# ---------------------------------------------------------------------------
+
+
+class TestActionHandlers:
+    """Tests for individual action handler functions."""
+
+    def _collect(self, async_gen_coro):
+        """Run an async generator to completion and collect yielded chunks."""
+        loop = asyncio.new_event_loop()
+        try:
+            async def _drain():
+                chunks = []
+                async for chunk in async_gen_coro:
+                    chunks.append(chunk)
+                return chunks
+            return loop.run_until_complete(_drain())
+        finally:
+            loop.close()
+
+    def test_update_client_action_updates_fields(self, db_session, sample_client):
+        """update_client action updates fields and reports completeness."""
+        args = [str(sample_client.id), "business_description=A great agency"]
+        chunks = self._collect(_action_update_client(db_session, args))
+        assert len(chunks) == 1
+        assert "Updated" in chunks[0]["content"]
+        assert "business_description" in chunks[0]["content"]
+
+    def test_update_client_action_no_fields(self, db_session, sample_client):
+        """update_client action with no field=value pairs returns error."""
+        args = [str(sample_client.id)]
+        chunks = self._collect(_action_update_client(db_session, args))
+        assert len(chunks) == 1
+        assert "No fields" in chunks[0]["content"]
+
+    def test_update_client_action_invalid_id(self, db_session):
+        """update_client action with non-numeric ID returns error."""
+        args = ["abc", "name=Foo"]
+        chunks = self._collect(_action_update_client(db_session, args))
+        assert len(chunks) == 1
+        assert "Invalid client ID" in chunks[0]["content"]
+
+    def test_update_client_action_not_found(self, db_session):
+        """update_client action with non-existent ID returns error."""
+        args = ["99999", "name=Ghost"]
+        chunks = self._collect(_action_update_client(db_session, args))
+        assert len(chunks) == 1
+        assert "failed" in chunks[0]["content"].lower()
+
+    def test_archive_client_action(self, db_session, sample_client):
+        """archive_client action archives and reports result."""
+        args = [str(sample_client.id)]
+        chunks = self._collect(_action_archive_client(db_session, args))
+        assert len(chunks) == 1
+        assert "Archived" in chunks[0]["content"]
+        assert sample_client.name in chunks[0]["content"]
+
+    def test_archive_client_action_not_found(self, db_session):
+        """archive_client action with non-existent ID returns error."""
+        args = ["99999"]
+        chunks = self._collect(_action_archive_client(db_session, args))
+        assert len(chunks) == 1
+        assert "failed" in chunks[0]["content"].lower()
+
+    def test_archive_client_action_no_args(self, db_session):
+        """archive_client action with no args returns error."""
+        chunks = self._collect(_action_archive_client(db_session, []))
+        assert len(chunks) == 1
+        assert "requires" in chunks[0]["content"].lower()
+
+    def test_add_voice_material_action_success(self, db_session, sample_client):
+        """add_voice_material action stores material and reports success."""
+        args = [str(sample_client.id), "operator_description", "We are a fun brand"]
+        chunks = self._collect(_action_add_voice_material(db_session, args))
+        assert len(chunks) == 1
+        assert "Stored voice material" in chunks[0]["content"]
+        assert "operator_description" in chunks[0]["content"]
+
+    def test_add_voice_material_action_no_args(self, db_session):
+        """add_voice_material action with insufficient args returns error."""
+        chunks = self._collect(_action_add_voice_material(db_session, ["1"]))
+        assert len(chunks) == 1
+        assert "requires" in chunks[0]["content"].lower()
+
+    def test_add_intelligence_action_success(self, db_session, sample_client):
+        """add_intelligence action stores entry and reports success."""
+        with patch("sophia.semantic.sync.sync_to_lance", new_callable=AsyncMock):
+            args = [str(sample_client.id), "business", "Founded in 2020"]
+            chunks = self._collect(_action_add_intelligence(db_session, args))
+        assert len(chunks) == 1
+        assert "Stored intelligence" in chunks[0]["content"]
+        assert "business" in chunks[0]["content"]
+
+    def test_add_intelligence_action_invalid_id(self, db_session):
+        """add_intelligence action with non-numeric ID returns error."""
+        chunks = self._collect(_action_add_intelligence(db_session, ["abc", "business", "Fact"]))
+        assert len(chunks) == 1
+        assert "Invalid client ID" in chunks[0]["content"]
+
+    def test_learn_action_with_context(self, db_session, sample_client):
+        """learn action stores fact using active client context."""
+        with patch("sophia.semantic.sync.sync_to_lance", new_callable=AsyncMock):
+            args = ["customers", "Mostly homeowners aged 35-55"]
+            chunks = self._collect(_action_learn(db_session, args, sample_client.id))
+        assert len(chunks) == 1
+        assert "Learned" in chunks[0]["content"]
+        assert "customers" in chunks[0]["content"]
+
+    def test_learn_action_without_context(self, db_session):
+        """learn action without active client context returns error."""
+        args = ["business", "Some fact"]
+        chunks = self._collect(_action_learn(db_session, args, None))
+        assert len(chunks) == 1
+        assert "active client" in chunks[0]["content"].lower()
+
+    def test_learn_action_no_args(self, db_session, sample_client):
+        """learn action with no args returns error."""
+        chunks = self._collect(_action_learn(db_session, [], sample_client.id))
+        assert len(chunks) == 1
+        assert "requires" in chunks[0]["content"].lower()

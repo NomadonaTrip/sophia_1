@@ -4,6 +4,8 @@ Loads settings from .env file with SOPHIA_ prefix.
 Validates database path is on ext4 filesystem (not NTFS) to prevent WAL corruption in WSL2.
 """
 
+from pathlib import Path
+
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings
 
@@ -18,6 +20,7 @@ class Settings(BaseSettings):
     db_path: str = "/home/tayo/sophia/data/sophia.db"
     db_encryption_key: SecretStr
     backup_dir: str = "/home/tayo/sophia/data/backups"
+    lance_path: str = ""  # derived from db_path parent if not set
     backup_retain_count: int = 7
     debug: bool = False
     operator_name: str = "Tayo"
@@ -55,13 +58,15 @@ class Settings(BaseSettings):
     }
 
     @model_validator(mode="after")
-    def validate_db_path_not_ntfs(self) -> "Settings":
-        """Reject database paths on NTFS mounts to prevent WAL corruption."""
+    def validate_and_derive_paths(self) -> "Settings":
+        """Reject NTFS paths and derive lance_path from db_path if not set."""
         if self.db_path.startswith("/mnt/"):
             raise ValueError(
                 "Database path must be on ext4 filesystem, not NTFS (/mnt/). "
                 "Use a path under /home/."
             )
+        if not self.lance_path:
+            self.lance_path = str(Path(self.db_path).parent / "lance")
         return self
 
 

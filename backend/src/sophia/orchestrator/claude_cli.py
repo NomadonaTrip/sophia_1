@@ -106,8 +106,42 @@ def build_system_prompt(
         "[ACTION:reject:DRAFT_ID:REASON]\n"
         "[ACTION:skip:DRAFT_ID]\n"
         "[ACTION:trigger_cycle:CLIENT_ID]\n"
-        "[ACTION:create_client:CLIENT_NAME:INDUSTRY]\n\n"
+        "[ACTION:create_client:CLIENT_NAME:INDUSTRY]\n"
+        "[ACTION:update_client:CLIENT_ID:FIELD=VALUE:FIELD=VALUE:...]\n"
+        "[ACTION:archive_client:CLIENT_ID]\n"
+        "[ACTION:add_voice_material:CLIENT_ID:SOURCE_TYPE:CONTENT]\n"
+        "[ACTION:add_intelligence:CLIENT_ID:DOMAIN:FACT]\n"
+        "[ACTION:learn:DOMAIN:FACT]\n\n"
+        "For update_client, fields use KEY=VALUE pairs separated by colons.\n"
+        "Updatable fields: business_description, geography_area, geography_radius_km,\n"
+        "industry_vertical, industry, name.\n\n"
+        "For add_voice_material, SOURCE_TYPE is one of: social_post, website_copy, "
+        "operator_description, reference_account.\n\n"
+        "For add_intelligence and learn, DOMAIN is one of: business, industry, "
+        "competitors, customers, product_service, sales_process.\n\n"
         "After emitting an action tag, briefly confirm what you did in natural language."
+    )
+
+    # 3b. Learning & Context Extraction instructions
+    sections.append(
+        "## Learning & Context Extraction\n"
+        "When the operator mentions facts about the active client in conversation, "
+        "capture them as intelligence using the `learn` action. This preserves "
+        "knowledge that would otherwise be lost when conversation history scrolls "
+        "out of the system prompt window.\n\n"
+        "Emit `[ACTION:learn:DOMAIN:FACT]` when Tayo mentions:\n"
+        "- **business**: ownership, hours, history, location details, business model\n"
+        "- **industry**: market trends, seasonal patterns, regulatory changes\n"
+        "- **competitors**: competitor names, strategies, strengths, weaknesses\n"
+        "- **customers**: demographics, preferences, pain points, buying patterns\n"
+        "- **product_service**: offerings, pricing, unique selling points, quality\n"
+        "- **sales_process**: lead sources, conversion, objections, follow-up methods\n\n"
+        "Rules:\n"
+        "- Only emit learn actions when there is an active client context\n"
+        "- Keep facts concise and atomic — one fact per action\n"
+        "- Never fabricate facts — only capture what the operator actually said\n"
+        "- Do not repeat facts already present in the client context above\n"
+        "- Emit learn actions silently alongside your natural response"
     )
 
     # 4. Portfolio state (health strip)
@@ -268,6 +302,26 @@ async def _execute_action(
         async for chunk in _action_create_client(db, args):
             yield chunk
 
+    elif verb == "update_client":
+        async for chunk in _action_update_client(db, args):
+            yield chunk
+
+    elif verb == "archive_client":
+        async for chunk in _action_archive_client(db, args):
+            yield chunk
+
+    elif verb == "add_voice_material":
+        async for chunk in _action_add_voice_material(db, args):
+            yield chunk
+
+    elif verb == "add_intelligence":
+        async for chunk in _action_add_intelligence(db, args):
+            yield chunk
+
+    elif verb == "learn":
+        async for chunk in _action_learn(db, args, client_context_id):
+            yield chunk
+
     else:
         logger.warning("Unknown action verb: %s", verb)
 
@@ -406,6 +460,222 @@ async def _action_create_client(
     except Exception as e:
         logger.exception("create_client action failed")
         yield {"type": "text", "content": f"(Client creation failed: {e})"}
+
+
+async def _action_update_client(
+    db: Session, args: list[str]
+) -> AsyncGenerator[dict, None]:
+    """Execute update_client action.
+
+    Args format: ["CLIENT_ID", "field=value", "field=value", ...]
+    """
+    if not args:
+        yield {"type": "text", "content": "(Update client requires a client ID.)"}
+        return
+
+    try:
+        client_id = int(args[0])
+    except ValueError:
+        yield {"type": "text", "content": f"(Invalid client ID: {args[0]}.)"}
+        return
+
+    # Parse field=value pairs from remaining args
+    update_fields: dict = {}
+    for pair in args[1:]:
+        if "=" not in pair:
+            continue
+        key, _, value = pair.partition("=")
+        key = key.strip()
+        value = value.strip()
+        # Coerce geography_radius_km to int
+        if key == "geography_radius_km":
+            try:
+                update_fields[key] = int(value)
+            except ValueError:
+                yield {"type": "text", "content": f"(Invalid integer for {key}: {value}.)"}
+                return
+        else:
+            update_fields[key] = value
+
+    if not update_fields:
+        yield {"type": "text", "content": "(No fields to update. Use FIELD=VALUE pairs.)"}
+        return
+
+    try:
+        from sophia.intelligence.schemas import ClientUpdate
+        from sophia.intelligence.service import ClientService
+
+        data = ClientUpdate(**update_fields)
+        client = ClientService.update_client(db, client_id, data)
+        yield {
+            "type": "text",
+            "content": (
+                f"(Updated {client.name}: "
+                f"{', '.join(f'{k}={v}' for k, v in update_fields.items())}. "
+                f"Profile now {client.profile_completeness_pct}% complete.)"
+            ),
+        }
+    except Exception as e:
+        logger.exception("update_client action failed")
+        yield {"type": "text", "content": f"(Client update failed: {e})"}
+
+
+async def _action_archive_client(
+    db: Session, args: list[str]
+) -> AsyncGenerator[dict, None]:
+    """Execute archive_client action."""
+    if not args:
+        yield {"type": "text", "content": "(Archive client requires a client ID.)"}
+        return
+
+    try:
+        client_id = int(args[0])
+    except ValueError:
+        yield {"type": "text", "content": f"(Invalid client ID: {args[0]}.)"}
+        return
+
+    try:
+        from sophia.intelligence.service import ClientService
+
+        result = ClientService.archive_client(db, client_id)
+        yield {
+            "type": "text",
+            "content": (
+                f"(Archived {result['name']}. "
+                f"ICP knowledge retained: {result['icp_knowledge_retained']}.)"
+            ),
+        }
+    except Exception as e:
+        logger.exception("archive_client action failed")
+        yield {"type": "text", "content": f"(Archive failed: {e})"}
+
+
+async def _action_add_voice_material(
+    db: Session, args: list[str]
+) -> AsyncGenerator[dict, None]:
+    """Execute add_voice_material action.
+
+    Args format: [CLIENT_ID, SOURCE_TYPE, CONTENT...]
+    Content may contain colons, so rejoin args[2:].
+    """
+    if len(args) < 3:
+        yield {"type": "text", "content": "(Voice material requires client ID, source type, and content.)"}
+        return
+
+    try:
+        client_id = int(args[0])
+    except ValueError:
+        yield {"type": "text", "content": f"(Invalid client ID: {args[0]}.)"}
+        return
+
+    source_type = args[1]
+    content = ":".join(args[2:])
+
+    try:
+        from sophia.intelligence.schemas import VoiceMaterialCreate
+        from sophia.intelligence.voice import VoiceService
+
+        data = VoiceMaterialCreate(
+            client_id=client_id,
+            source_type=source_type,
+            content=content,
+        )
+        material = VoiceService.add_material(db, data)
+        yield {
+            "type": "text",
+            "content": (
+                f"(Stored voice material #{material.id} for client {client_id}: "
+                f"{source_type}, {len(content)} chars.)"
+            ),
+        }
+    except Exception as e:
+        logger.exception("add_voice_material action failed")
+        yield {"type": "text", "content": f"(Voice material failed: {e})"}
+
+
+async def _action_add_intelligence(
+    db: Session, args: list[str]
+) -> AsyncGenerator[dict, None]:
+    """Execute add_intelligence action.
+
+    Args format: [CLIENT_ID, DOMAIN, FACT...]
+    Fact may contain colons, so rejoin args[2:].
+    """
+    if len(args) < 3:
+        yield {"type": "text", "content": "(Intelligence entry requires client ID, domain, and fact.)"}
+        return
+
+    try:
+        client_id = int(args[0])
+    except ValueError:
+        yield {"type": "text", "content": f"(Invalid client ID: {args[0]}.)"}
+        return
+
+    domain = args[1]
+    fact = ":".join(args[2:])
+
+    try:
+        from sophia.intelligence.service import add_intelligence
+
+        entry = await add_intelligence(
+            db,
+            client_id=client_id,
+            domain=domain,
+            fact=fact,
+            source="operator:explicit",
+            confidence=0.5,
+        )
+        yield {
+            "type": "text",
+            "content": (
+                f"(Stored intelligence #{entry.id} for client {client_id}: "
+                f"[{domain}] {fact[:80]})"
+            ),
+        }
+    except Exception as e:
+        logger.exception("add_intelligence action failed")
+        yield {"type": "text", "content": f"(Intelligence entry failed: {e})"}
+
+
+async def _action_learn(
+    db: Session, args: list[str], client_context_id: Optional[int]
+) -> AsyncGenerator[dict, None]:
+    """Execute learn action — capture a fact from conversation into intelligence.
+
+    Args format: [DOMAIN, FACT...]
+    Uses active client context (no CLIENT_ID in args).
+    """
+    if not args or len(args) < 2:
+        yield {"type": "text", "content": "(Learn requires domain and fact.)"}
+        return
+
+    if not client_context_id:
+        yield {"type": "text", "content": "(Cannot learn without an active client context.)"}
+        return
+
+    domain = args[0]
+    fact = ":".join(args[1:])
+
+    try:
+        from sophia.intelligence.service import add_intelligence
+
+        entry = await add_intelligence(
+            db,
+            client_id=client_context_id,
+            domain=domain,
+            fact=fact,
+            source="operator:conversation",
+            confidence=0.7,
+        )
+        yield {
+            "type": "text",
+            "content": (
+                f"(Learned: [{domain}] {fact[:80]})"
+            ),
+        }
+    except Exception as e:
+        logger.exception("learn action failed")
+        yield {"type": "text", "content": f"(Learn failed: {e})"}
 
 
 # ---------------------------------------------------------------------------

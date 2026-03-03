@@ -205,3 +205,29 @@ class IntelligenceEntryCreate(BaseModel):
     source: str
     confidence: float = Field(0.5, ge=0, le=1)
     is_significant: bool = False
+
+
+class VoiceMaterialBody(BaseModel):
+    """Request body for adding voice source material via API.
+
+    client_id comes from the URL path, not the body.
+    """
+
+    source_type: Literal[
+        "social_post", "website_copy", "operator_description", "reference_account"
+    ]
+    content: str
+    source_url: Optional[str] = None
+    metadata_: Optional[dict] = None
+
+
+class IntelligenceEntryBody(BaseModel):
+    """Request body for adding an intelligence entry via API.
+
+    client_id comes from the URL path, not the body.
+    """
+
+    domain: str  # IntelligenceDomain value
+    fact: str
+    source: str = "operator:explicit"
+    confidence: float = Field(0.5, ge=0, le=1)

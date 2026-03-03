@@ -1,7 +1,7 @@
-"""Tests for chat intent detection and response routing.
+"""Tests for chat conversation history and cycle trigger wiring.
 
-Covers all 6 intent types, conversation persistence, history ordering,
-fuzzy client name matching for context switching, and cycle trigger wiring.
+Intent detection has been removed — all messages route through Claude CLI.
+These tests cover conversation history ordering and cycle trigger mechanics.
 """
 
 import asyncio
@@ -12,109 +12,20 @@ import pytest
 from sophia.intelligence.schemas import ClientCreate
 from sophia.intelligence.service import ClientService
 from sophia.orchestrator.chat import (
-    detect_intent,
     get_conversation_history,
     handle_chat_message,
+    _create_and_fire_cycle,
 )
 from sophia.orchestrator.models import ChatMessage, CycleRun
 
 
 # ---------------------------------------------------------------------------
-# Intent Detection Tests
+# Conversation History Tests
 # ---------------------------------------------------------------------------
 
 
-class TestDetectIntent:
-    """Tests for keyword-based intent detection."""
-
-    def test_detect_client_switch(self):
-        """'Switch to Shane's Bakery' -> client_switch with client name."""
-        result = detect_intent("Switch to Shane's Bakery")
-        assert result["type"] == "client_switch"
-        assert result["params"]["client_name"] == "Shane's Bakery"
-        assert result["confidence"] == 0.8
-
-    def test_detect_client_switch_variant(self):
-        """'Let's talk about Orban Forest' -> client_switch."""
-        result = detect_intent("Let's talk about Orban Forest")
-        assert result["type"] == "client_switch"
-        assert result["params"]["client_name"] == "Orban Forest"
-
-    def test_detect_approval(self):
-        """'approve' -> approval_action."""
-        result = detect_intent("approve")
-        assert result["type"] == "approval_action"
-        assert result["params"]["action"] == "approve"
-
-    def test_detect_approval_with_draft_id(self):
-        """'approve draft #5' -> approval_action with draft_id."""
-        result = detect_intent("approve draft #5")
-        assert result["type"] == "approval_action"
-        assert result["params"]["action"] == "approve"
-        assert result["params"]["draft_id"] == 5
-
-    def test_detect_cycle_trigger(self):
-        """'Run cycle for Shane' -> cycle_trigger."""
-        result = detect_intent("Run cycle for Shane")
-        assert result["type"] == "cycle_trigger"
-        assert result["params"]["client_name"] == "Shane"
-
-    def test_detect_status(self):
-        """'How is Orban Forest doing?' -> status_query."""
-        result = detect_intent("How is Orban Forest doing?")
-        assert result["type"] == "status_query"
-
-    def test_detect_help(self):
-        """'What can you do?' -> help."""
-        result = detect_intent("What can you do?")
-        assert result["type"] == "help"
-        assert result["confidence"] == 0.8
-
-    def test_detect_general_fallback(self):
-        """Unmatched messages fall back to 'general'."""
-        result = detect_intent("I think we should focus on summer content")
-        assert result["type"] == "general"
-        assert result["confidence"] == 0.5
-        assert result["params"] == {}
-
-
-# ---------------------------------------------------------------------------
-# Conversation Persistence Tests
-# ---------------------------------------------------------------------------
-
-
-class TestConversationPersistence:
-    """Tests for chat message persistence and history retrieval."""
-
-    def test_conversation_persistence(self, db_session):
-        """handle_chat_message persists both user and sophia messages."""
-
-        async def _run():
-            chunks = []
-            async for chunk in handle_chat_message(db_session, "help"):
-                chunks.append(chunk)
-            return chunks
-
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(_run())
-        finally:
-            loop.close()
-
-        # Verify messages persisted
-        messages = db_session.query(ChatMessage).all()
-        roles = [m.role for m in messages]
-        assert "user" in roles
-        assert "sophia" in roles
-
-        # Verify user message content
-        user_msgs = [m for m in messages if m.role == "user"]
-        assert any(m.content == "help" for m in user_msgs)
-
-        # Verify sophia response content exists
-        sophia_msgs = [m for m in messages if m.role == "sophia"]
-        assert len(sophia_msgs) >= 1
-        assert len(sophia_msgs[0].content) > 0
+class TestConversationHistory:
+    """Tests for conversation history retrieval."""
 
     def test_conversation_history_order(self, db_session):
         """get_conversation_history returns messages in chronological order."""
@@ -136,42 +47,23 @@ class TestConversationPersistence:
         assert history[1].content == "Message 3"
         assert history[2].content == "Message 4"
 
+    def test_conversation_history_client_filter(self, db_session, sample_client):
+        """get_conversation_history filters by client_context_id."""
+        db_session.add(ChatMessage(
+            role="user", content="global msg", client_context_id=None
+        ))
+        db_session.add(ChatMessage(
+            role="user", content="client msg",
+            client_context_id=sample_client.id,
+        ))
+        db_session.flush()
 
-# ---------------------------------------------------------------------------
-# Client Switch Fuzzy Match Test
-# ---------------------------------------------------------------------------
-
-
-class TestClientSwitchFuzzyMatch:
-    """Tests for fuzzy client name matching in context switches."""
-
-    def test_client_switch_fuzzy_match(self, db_session, sample_client):
-        """Fuzzy match succeeds: 'switch to orban' matches 'Orban Forest'."""
-
-        async def _run():
-            chunks = []
-            async for chunk in handle_chat_message(
-                db_session, "switch to orban"
-            ):
-                chunks.append(chunk)
-            return chunks
-
-        loop = asyncio.new_event_loop()
-        try:
-            chunks = loop.run_until_complete(_run())
-        finally:
-            loop.close()
-
-        # Find context chunk
-        context_chunks = [c for c in chunks if c.get("type") == "context"]
-        assert len(context_chunks) == 1
-        assert context_chunks[0]["client_id"] == sample_client.id
-        assert context_chunks[0]["client_name"] == "Orban Forest"
-
-        # Find text chunk
-        text_chunks = [c for c in chunks if c.get("type") == "text"]
-        assert len(text_chunks) >= 1
-        assert "Orban Forest" in text_chunks[0]["content"]
+        # Filter by client
+        history = get_conversation_history(
+            db_session, client_context_id=sample_client.id
+        )
+        assert len(history) == 1
+        assert history[0].content == "client msg"
 
 
 # ---------------------------------------------------------------------------
@@ -180,69 +72,22 @@ class TestClientSwitchFuzzyMatch:
 
 
 class TestCycleTrigger:
-    """Tests for cycle trigger wiring: chat triggers actual CycleRun creation."""
+    """Tests for cycle trigger: creates CycleRun and fires background task."""
 
     @patch("sophia.orchestrator.chat.asyncio.ensure_future")
-    def test_cycle_trigger_creates_cycle_run(self, mock_ensure_future, db_session, sample_client):
-        """'Run cycle for Orban Forest' creates a CycleRun and returns cycle_id."""
+    def test_create_and_fire_cycle(self, mock_ensure_future, db_session, sample_client):
+        """_create_and_fire_cycle creates a CycleRun and queues background task."""
+        cycle_id = _create_and_fire_cycle(db_session, sample_client.id)
 
-        async def _run():
-            chunks = []
-            async for chunk in handle_chat_message(
-                db_session, "run cycle for Orban Forest"
-            ):
-                chunks.append(chunk)
-            return chunks
+        assert isinstance(cycle_id, int)
+        assert cycle_id > 0
 
-        loop = asyncio.new_event_loop()
-        try:
-            chunks = loop.run_until_complete(_run())
-        finally:
-            loop.close()
-
-        # Confirmation text should include "cycle #"
-        text_chunks = [c for c in chunks if c.get("type") == "text"]
-        assert len(text_chunks) >= 1
-        assert "cycle #" in text_chunks[0]["content"]
-        assert "Orban Forest" in text_chunks[0]["content"]
-
-        # CycleRun placeholder should have been created in DB
+        # CycleRun should exist in DB
         cycle_runs = db_session.query(CycleRun).filter(
             CycleRun.client_id == sample_client.id
         ).all()
         assert len(cycle_runs) >= 1
         assert cycle_runs[0].status == "pending"
 
-        # ensure_future was called (background task was queued)
-        mock_ensure_future.assert_called_once()
-
-    @patch("sophia.orchestrator.chat.asyncio.ensure_future")
-    def test_cycle_trigger_with_context_id(self, mock_ensure_future, db_session, sample_client):
-        """Cycle trigger uses client_context_id when no client name is given."""
-
-        async def _run():
-            chunks = []
-            async for chunk in handle_chat_message(
-                db_session, "run cycle", client_context_id=sample_client.id
-            ):
-                chunks.append(chunk)
-            return chunks
-
-        loop = asyncio.new_event_loop()
-        try:
-            chunks = loop.run_until_complete(_run())
-        finally:
-            loop.close()
-
-        # Confirmation text should include "cycle #"
-        text_chunks = [c for c in chunks if c.get("type") == "text"]
-        assert len(text_chunks) >= 1
-        assert "cycle #" in text_chunks[0]["content"]
-
-        # CycleRun placeholder should have been created
-        cycle_runs = db_session.query(CycleRun).filter(
-            CycleRun.client_id == sample_client.id
-        ).all()
-        assert len(cycle_runs) >= 1
-
+        # Background task was queued
         mock_ensure_future.assert_called_once()

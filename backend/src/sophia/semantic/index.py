@@ -3,7 +3,7 @@
 Provides singleton LanceDB connection, table creation with FTS index,
 and hybrid search with RRF (Reciprocal Rank Fusion) reranking.
 
-Tables are stored on ext4 filesystem at /home/tayo/sophia/data/lance
+Tables are stored on ext4 filesystem (derived from Settings.db_path)
 per architecture decision (not NTFS to avoid corruption).
 """
 
@@ -19,8 +19,13 @@ from lancedb.rerankers import RRFReranker
 
 logger = logging.getLogger(__name__)
 
-# Default LanceDB storage path (ext4 filesystem)
-_DEFAULT_LANCE_PATH = "/home/tayo/sophia/data/lance"
+def _get_lance_path() -> str:
+    """Get LanceDB path from settings, falling back to db_path sibling."""
+    try:
+        from sophia.config import get_settings
+        return get_settings().lance_path
+    except Exception:
+        return "/home/nomad/sophia/data/lance"
 
 # Module-level singleton connection
 _db: lancedb.DBConnection | None = None
@@ -54,14 +59,14 @@ def get_lance_db(path: str | None = None) -> lancedb.DBConnection:
     """Get or create singleton LanceDB connection.
 
     Args:
-        path: Override path for testing. Defaults to /home/tayo/sophia/data/lance.
+        path: Override path for testing. Defaults to settings-derived lance_path.
 
     Returns:
         LanceDB connection instance.
     """
     global _db
     if _db is None or path is not None:
-        lance_path = path or _DEFAULT_LANCE_PATH
+        lance_path = path or _get_lance_path()
         logger.info("Connecting to LanceDB at %s", lance_path)
         _db = lancedb.connect(lance_path)
     return _db
