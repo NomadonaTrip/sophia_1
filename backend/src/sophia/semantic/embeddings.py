@@ -53,12 +53,24 @@ def unload_model() -> None:
         _model = None
 
 
+def _sync_embed_single(text: str) -> list[float]:
+    """Synchronous single-text embed (runs in executor thread)."""
+    model = load_model()
+    return model.encode([text])["dense_vecs"][0].tolist()
+
+
+def _sync_embed_batch(texts: list[str]) -> list[list[float]]:
+    """Synchronous batch embed (runs in executor thread)."""
+    model = load_model()
+    return [v.tolist() for v in model.encode(texts)["dense_vecs"]]
+
+
 async def embed(text: str) -> list[float]:
     """Generate 1024-dim dense embedding for a single text.
 
     Acquires asyncio.Lock before GPU access to serialize concurrent calls.
-    Runs model.encode() in an executor thread to avoid blocking the event loop.
-    ~50ms on RTX 3080.
+    Both model loading AND encoding run in an executor thread so neither
+    blocks the event loop (critical for SSE streams on NTFS).
 
     Args:
         text: The text to embed.
@@ -67,13 +79,8 @@ async def embed(text: str) -> list[float]:
         1024-dimensional float vector.
     """
     async with _lock:
-        model = load_model()
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: model.encode([text])["dense_vecs"][0].tolist(),
-        )
-        return result
+        return await loop.run_in_executor(None, _sync_embed_single, text)
 
 
 async def embed_batch(texts: list[str]) -> list[list[float]]:
@@ -91,10 +98,5 @@ async def embed_batch(texts: list[str]) -> list[list[float]]:
     if not texts:
         return []
     async with _lock:
-        model = load_model()
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(
-            None,
-            lambda: [v.tolist() for v in model.encode(texts)["dense_vecs"]],
-        )
-        return result
+        return await loop.run_in_executor(None, _sync_embed_batch, texts)

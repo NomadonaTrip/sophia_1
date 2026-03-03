@@ -593,6 +593,34 @@ async def _action_add_voice_material(
         yield {"type": "text", "content": f"(Voice material failed: {e})"}
 
 
+async def _bg_add_intelligence(
+    db: Session,
+    client_id: int,
+    domain: str,
+    fact: str,
+    source: str,
+    confidence: float,
+) -> None:
+    """Background task for add_intelligence (embedding is slow on first call)."""
+    try:
+        from sophia.intelligence.service import add_intelligence
+
+        await add_intelligence(
+            db,
+            client_id=client_id,
+            domain=domain,
+            fact=fact,
+            source=source,
+            confidence=confidence,
+        )
+    except Exception:
+        logger.exception(
+            "Background add_intelligence failed: client=%d domain=%s",
+            client_id,
+            domain,
+        )
+
+
 async def _action_add_intelligence(
     db: Session, args: list[str]
 ) -> AsyncGenerator[dict, None]:
@@ -600,6 +628,8 @@ async def _action_add_intelligence(
 
     Args format: [CLIENT_ID, DOMAIN, FACT...]
     Fact may contain colons, so rejoin args[2:].
+    Fire-and-forget: SQLite write + embedding happen in background
+    so the SSE stream isn't blocked by model loading.
     """
     if len(args) < 3:
         yield {"type": "text", "content": "(Intelligence entry requires client ID, domain, and fact.)"}
@@ -614,27 +644,16 @@ async def _action_add_intelligence(
     domain = args[1]
     fact = ":".join(args[2:])
 
-    try:
-        from sophia.intelligence.service import add_intelligence
-
-        entry = await add_intelligence(
-            db,
-            client_id=client_id,
-            domain=domain,
-            fact=fact,
-            source="operator:explicit",
-            confidence=0.5,
-        )
-        yield {
-            "type": "text",
-            "content": (
-                f"(Stored intelligence #{entry.id} for client {client_id}: "
-                f"[{domain}] {fact[:80]})"
-            ),
-        }
-    except Exception as e:
-        logger.exception("add_intelligence action failed")
-        yield {"type": "text", "content": f"(Intelligence entry failed: {e})"}
+    asyncio.ensure_future(
+        _bg_add_intelligence(db, client_id, domain, fact, "operator:explicit", 0.5)
+    )
+    yield {
+        "type": "text",
+        "content": (
+            f"(Storing intelligence for client {client_id}: "
+            f"[{domain}] {fact[:80]})"
+        ),
+    }
 
 
 async def _action_learn(
@@ -644,6 +663,7 @@ async def _action_learn(
 
     Args format: [DOMAIN, FACT...]
     Uses active client context (no CLIENT_ID in args).
+    Fire-and-forget so the SSE stream isn't blocked by model loading.
     """
     if not args or len(args) < 2:
         yield {"type": "text", "content": "(Learn requires domain and fact.)"}
@@ -656,26 +676,15 @@ async def _action_learn(
     domain = args[0]
     fact = ":".join(args[1:])
 
-    try:
-        from sophia.intelligence.service import add_intelligence
-
-        entry = await add_intelligence(
-            db,
-            client_id=client_context_id,
-            domain=domain,
-            fact=fact,
-            source="operator:conversation",
-            confidence=0.7,
+    asyncio.ensure_future(
+        _bg_add_intelligence(
+            db, client_context_id, domain, fact, "operator:conversation", 0.7
         )
-        yield {
-            "type": "text",
-            "content": (
-                f"(Learned: [{domain}] {fact[:80]})"
-            ),
-        }
-    except Exception as e:
-        logger.exception("learn action failed")
-        yield {"type": "text", "content": f"(Learn failed: {e})"}
+    )
+    yield {
+        "type": "text",
+        "content": f"(Learned: [{domain}] {fact[:80]})",
+    }
 
 
 # ---------------------------------------------------------------------------

@@ -482,12 +482,12 @@ class TestActionHandlers:
         assert "requires" in chunks[0]["content"].lower()
 
     def test_add_intelligence_action_success(self, db_session, sample_client):
-        """add_intelligence action stores entry and reports success."""
-        with patch("sophia.semantic.sync.sync_to_lance", new_callable=AsyncMock):
+        """add_intelligence action fires background task and confirms immediately."""
+        with patch("sophia.orchestrator.claude_cli._bg_add_intelligence", new_callable=AsyncMock) as mock_bg:
             args = [str(sample_client.id), "business", "Founded in 2020"]
             chunks = self._collect(_action_add_intelligence(db_session, args))
         assert len(chunks) == 1
-        assert "Stored intelligence" in chunks[0]["content"]
+        assert "Storing intelligence" in chunks[0]["content"]
         assert "business" in chunks[0]["content"]
 
     def test_add_intelligence_action_invalid_id(self, db_session):
@@ -497,8 +497,8 @@ class TestActionHandlers:
         assert "Invalid client ID" in chunks[0]["content"]
 
     def test_learn_action_with_context(self, db_session, sample_client):
-        """learn action stores fact using active client context."""
-        with patch("sophia.semantic.sync.sync_to_lance", new_callable=AsyncMock):
+        """learn action fires background task and confirms immediately."""
+        with patch("sophia.orchestrator.claude_cli._bg_add_intelligence", new_callable=AsyncMock) as mock_bg:
             args = ["customers", "Mostly homeowners aged 35-55"]
             chunks = self._collect(_action_learn(db_session, args, sample_client.id))
         assert len(chunks) == 1
