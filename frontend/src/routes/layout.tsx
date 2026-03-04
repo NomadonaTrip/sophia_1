@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { Outlet, useNavigate, useLocation } from 'react-router'
 import {
   LayoutGrid,
@@ -9,6 +9,7 @@ import {
   LogOut,
   ChevronUp,
   ChevronDown,
+  FileUp,
 } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { cn } from '@/lib/utils'
@@ -31,19 +32,64 @@ const NAV_TABS = [
   { label: 'Session Close', path: '/session-close', icon: LogOut },
 ] as const
 
+const SUPPORTED_EXTENSIONS = ['.xlsx', '.xls', '.txt', '.md', '.png', '.jpg', '.jpeg', '.gif', '.webp']
+
+function isSupportedFile(file: File): boolean {
+  const name = file.name.toLowerCase()
+  return SUPPORTED_EXTENSIONS.some((ext) => name.endsWith(ext))
+}
+
 export function Layout() {
   const navigate = useNavigate()
   const location = useLocation()
   const [panelCollapsed, setPanelCollapsed] = useState(false)
+  const [isDragOver, setIsDragOver] = useState(false)
 
   // Real chat hook -- replaces hardcoded responses with backend SSE streaming
-  const { messages, isThinking, sendMessage } = useChat()
+  const { messages, isThinking, isUploading, sendMessage, sendFileMessage } = useChat()
 
   // Activate SSE connection for real-time sync
   useSSE()
 
   const currentPath =
     location.pathname === '/' ? '/morning-brief' : location.pathname
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only show overlay if dragging files
+    if (e.dataTransfer.types.includes('Files')) {
+      setIsDragOver(true)
+    }
+  }, [])
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    // Only clear when leaving the container (not entering a child)
+    if (e.currentTarget === e.target || !e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false)
+    }
+  }, [])
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      e.stopPropagation()
+      setIsDragOver(false)
+
+      const files = Array.from(e.dataTransfer.files)
+      const supported = files.find(isSupportedFile)
+
+      if (supported) {
+        sendFileMessage(supported)
+      }
+    },
+    [sendFileMessage],
+  )
+
+  const effectiveThinking = isThinking || isUploading
+  const thinkingText = isUploading ? 'Reading file...' : undefined
 
   return (
     <div className="flex min-h-screen flex-col bg-midnight-900">
@@ -144,18 +190,35 @@ export function Layout() {
         {/* Conversation area — expands when panel collapsed, 30vh min otherwise */}
         <div
           className={cn(
-            'border-t border-midnight-700 overflow-y-auto',
+            'border-t border-midnight-700 overflow-y-auto relative',
             panelCollapsed ? 'flex-1' : 'h-[30vh] min-h-[30vh]',
+            isDragOver && 'ring-2 ring-sage-400/50 bg-sage-500/5',
           )}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           <div className="mx-auto w-[60%] px-4">
-            <ChatMessageArea messages={messages} isThinking={isThinking} />
+            <ChatMessageArea messages={messages} isThinking={effectiveThinking} />
           </div>
+
+          {/* Drop overlay */}
+          {isDragOver && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-midnight-900/80 backdrop-blur-sm">
+              <FileUp className="h-12 w-12 text-sage-400 mb-3" />
+              <p className="text-sage-300 font-medium text-sm">Drop file here</p>
+              <p className="text-text-muted text-xs mt-1">Excel, images, .txt, .md</p>
+            </div>
+          )}
         </div>
       </main>
 
       {/* Fixed bottom chat input */}
-      <ChatInputBar onSend={sendMessage} isThinking={isThinking} />
+      <ChatInputBar
+        onSend={sendMessage}
+        isThinking={effectiveThinking}
+        thinkingText={thinkingText}
+      />
     </div>
   )
 }

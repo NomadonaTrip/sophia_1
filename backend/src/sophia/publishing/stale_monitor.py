@@ -66,8 +66,7 @@ async def check_stale_content(
         return stale_drafts
 
     finally:
-        # Do NOT close -- caller manages session lifecycle
-        pass
+        db.close()
 
 
 def register_stale_monitor(

@@ -1,16 +1,56 @@
 import { useEffect, useRef } from 'react'
+import { FileSpreadsheet, FileText, ImageIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+export interface FileAttachment {
+  filename: string
+  fileType: 'excel' | 'text' | 'image'
+  /** Excel-specific */
+  sheetNames?: string[]
+  totalRows?: number
+  truncated?: boolean
+  /** Image-specific */
+  imageUrl?: string
+}
 
 export interface ChatMessage {
   id: string
   role: 'user' | 'sophia'
   content: string
   timestamp: Date
+  fileAttachment?: FileAttachment
 }
 
 interface ChatMessageAreaProps {
   messages: ChatMessage[]
   isThinking?: boolean
+}
+
+function FileChip({ attachment }: { attachment: FileAttachment }) {
+  const Icon =
+    attachment.fileType === 'excel'
+      ? FileSpreadsheet
+      : attachment.fileType === 'text'
+        ? FileText
+        : ImageIcon
+
+  return (
+    <div className="flex items-center gap-1.5 mb-1.5 px-2 py-1 rounded-md bg-midnight-600/50 border border-midnight-500/50 w-fit">
+      <Icon className="h-3.5 w-3.5 text-sage-400 flex-none" />
+      <span className="text-xs text-sage-300 font-medium truncate max-w-[200px]">
+        {attachment.filename}
+      </span>
+      {attachment.fileType === 'excel' && attachment.totalRows != null && (
+        <span className="text-[10px] text-text-muted">
+          {attachment.totalRows} rows
+          {attachment.truncated && ' (truncated)'}
+        </span>
+      )}
+      {attachment.fileType === 'text' && attachment.truncated && (
+        <span className="text-[10px] text-text-muted">(truncated)</span>
+      )}
+    </div>
+  )
 }
 
 export function ChatMessageArea({ messages, isThinking = false }: ChatMessageAreaProps) {
@@ -46,6 +86,18 @@ export function ChatMessageArea({ messages, isThinking = false }: ChatMessageAre
             <span className="font-sophia italic text-sage-300 text-xs block mb-1">
               Sophia
             </span>
+          )}
+          {msg.fileAttachment && (
+            <>
+              <FileChip attachment={msg.fileAttachment} />
+              {msg.fileAttachment.fileType === 'image' && msg.fileAttachment.imageUrl && (
+                <img
+                  src={msg.fileAttachment.imageUrl}
+                  alt={msg.fileAttachment.filename}
+                  className="max-w-[280px] max-h-[200px] rounded-md mb-1.5 object-contain"
+                />
+              )}
+            </>
           )}
           <p>
             {msg.content}

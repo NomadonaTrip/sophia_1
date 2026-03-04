@@ -12,7 +12,7 @@ import asyncio
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, File, Query, Request, UploadFile
 from sqlalchemy.orm import Session
 from sse_starlette.sse import EventSourceResponse
 
@@ -79,6 +79,34 @@ def chat_history(
     """
     messages = get_conversation_history(db, limit, client_context_id)
     return [ChatMessageResponse.model_validate(m) for m in messages]
+
+
+# -- File Upload Endpoint ------------------------------------------------------
+
+
+@orchestrator_router.post("/chat/upload-file")
+async def upload_file_endpoint(file: UploadFile = File(...)):
+    """Upload a file for Sophia to parse and discuss in chat.
+
+    Supports Excel (.xlsx, .xls), text (.txt, .md), and images
+    (.png, .jpg, .jpeg, .gif, .webp). Returns parsed content that
+    the frontend sends as a chat message.
+    """
+    from fastapi import HTTPException
+
+    from sophia.orchestrator.file_upload import FileUploadError, process_file_upload
+
+    try:
+        result = await process_file_upload(file)
+    except FileUploadError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).exception("File upload parse failure")
+        raise HTTPException(status_code=500, detail="Failed to parse file")
+
+    return result
 
 
 # -- Cycle Management Endpoints -----------------------------------------------

@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from sophia.agent.router import agent_router
 from sophia.analytics.router import analytics_router
@@ -164,6 +165,14 @@ app.include_router(capabilities_router)
 app.include_router(notification_router)
 app.include_router(orchestrator_router)
 app.include_router(client_router)
+
+# Serve uploaded files (images, etc.) from data/uploads/
+# CWD is backend/ when running uvicorn — matches file_upload.py save path
+from pathlib import Path as _Path
+
+_uploads_dir = _Path("data/uploads")
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(_uploads_dir)), name="uploads")
 
 
 # Telegram webhook endpoint

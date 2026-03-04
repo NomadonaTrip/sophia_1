@@ -180,7 +180,7 @@ def build_system_prompt(
     try:
         from sophia.orchestrator.chat import get_conversation_history
 
-        history = get_conversation_history(db, limit=20)
+        history = get_conversation_history(db, limit=20, client_context_id=client_context_id)
         if history:
             history_lines = []
             for msg in history:

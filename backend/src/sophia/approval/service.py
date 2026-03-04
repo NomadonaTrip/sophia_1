@@ -224,7 +224,7 @@ def get_approval_queue(
     if status:
         query = query.filter(ContentDraft.status == status)
     else:
-        query = query.filter(ContentDraft.status == "in_review")
+        query = query.filter(ContentDraft.status.in_(["pending_review", "in_review"]))
     return query.order_by(ContentDraft.id).all()
 
 
