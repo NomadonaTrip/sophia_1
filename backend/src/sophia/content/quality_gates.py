@@ -530,7 +530,7 @@ def run_plagiarism_gate(
 # Gate 4: AI Pattern Detection
 # =============================================================================
 
-# Known AI cliche patterns (from research)
+# Known AI cliche patterns — Gen-1 (individual word tells)
 AI_CLICHE_PATTERNS: list[str] = [
     r"\bdive\s+in\b",
     r"\bin\s+today'?s\s+world\b",
@@ -551,6 +551,42 @@ AI_CLICHE_PATTERNS: list[str] = [
     r"\bfostering\b",
 ]
 
+# Gen-2 AI cliche patterns — structural tells that evade word-level detection
+AI_CLICHE_PATTERNS_GEN2: list[str] = [
+    # Hustle-culture / grind metaphors
+    r"\bwork(?:s|ing)\s+while\s+you\s+sleep\b",
+    r"\bsitting\s+on\s+a\s+goldmine\b",
+    r"\bso\s+you\s+don'?t\s+have\s+to\b",
+    # Meta-AI defensiveness ("we're not a robot" = clearly a robot)
+    r"\bnot\s+like\s+a\s+robot\b",
+    r"\bnot\s+(?:some\s+)?cookie[\s-]?cutter\b",
+    r"\bsounds?\s+like\s+you,?\s+not\s+(?:like\s+)?us\b",
+    # Engagement-bait closers
+    r"tag\s+(?:a\s+(?:\w+\s+)?(?:business|owner|friend)|someone|a\s+\w+)\s+(?:who|that)\b",
+    r"\bsave\s+this\s+(?:for\s+later|post)\b",
+    r"\bdrop\s+a\b.{0,5}(?:if|in\s+the\s+comments)",
+    r"\bdm\s+us\s+['\"]?\w+['\"]?\s+to\b",  # "DM us SYSTEM to..."
+    # Fake-precision unsourced stats
+    r"\b\d+[-–]\d+\s+hours?\s+(?:a|per)\s+(?:week|day|month)\b",
+    # Coach-speak / motivational filler
+    r"\bthat'?s\s+(?:the\s+)?(?:difference|shift|power)\b",
+    r"\bthat'?s\s+why\s+we\s+exist\b",
+    r"\bshowing\s+up\s+consistently\b",
+    r"\btips\s+that\s+actually\s+work\b",
+    r"\byour\s+\w+\s+will\s+thank\s+you\b",  # "Your reach will thank you"
+    # Purpose-statement cliches
+    r"\bwe\s+(?:built|created|started)\s+\w+\s+to\s+fix\s+that\b",
+    r"\bhere'?s\s+(?:the\s+(?:thing|truth|reality))\b",
+]
+
+# Emoji-bullet formatting (3+ emoji used as list markers = AI default)
+EMOJI_BULLET_PATTERN = r"(?:^|\n)\s*[\U0001F300-\U0001FAFF\u2600-\u27BF]\s+\S"
+
+# Mic-drop short sentences (single word + period, often AI-generated emphasis)
+MIC_DROP_PATTERNS: list[str] = [
+    r"(?:^|\.\s+)(?:Simple|Always|Period|Exactly|Not\s+so\s+much)\.\s*$",
+]
+
 
 def run_ai_detection_gate(
     db: Session, draft: ContentDraft, client_id: int
@@ -558,8 +594,13 @@ def run_ai_detection_gate(
     """Detect AI-generated content patterns.
 
     Checks:
-    1. Known AI cliche phrases (regex list)
-    2. Unnaturally uniform sentence structure (CV < 0.3 is suspicious)
+    1. Gen-1 AI cliche phrases (word-level)
+    2. Gen-2 AI structural patterns (phrases, templates, engagement bait)
+    3. Emoji-bullet formatting (3+ emoji list markers)
+    4. Mic-drop short sentences
+    5. Unnaturally uniform sentence structure (CV < 0.3 is suspicious)
+    6. Arrow-list formatting (→ → → used as bullets)
+    7. Anonymous/fabricated testimonials (quotes with no attribution)
     """
     copy = draft.copy or ""
     if not copy.strip():
@@ -572,7 +613,7 @@ def run_ai_detection_gate(
 
     issues: list[str] = []
 
-    # Check 1: AI cliche patterns
+    # Check 1: Gen-1 AI cliche patterns (word-level)
     found_cliches = []
     for pattern in AI_CLICHE_PATTERNS:
         matches = re.findall(pattern, copy, re.IGNORECASE)
@@ -580,9 +621,65 @@ def run_ai_detection_gate(
             found_cliches.extend(matches)
 
     if found_cliches:
-        issues.append(f"AI cliches found: {', '.join(found_cliches[:5])}")
+        issues.append(f"AI cliches (gen1): {', '.join(found_cliches[:5])}")
 
-    # Check 2: Sentence structure uniformity
+    # Check 2: Gen-2 AI structural patterns
+    found_gen2 = []
+    for pattern in AI_CLICHE_PATTERNS_GEN2:
+        matches = re.findall(pattern, copy, re.IGNORECASE)
+        if matches:
+            found_gen2.extend(matches)
+
+    if found_gen2:
+        issues.append(
+            f"AI structural patterns (gen2): {', '.join(found_gen2[:5])}"
+        )
+
+    # Check 3: Emoji-bullet formatting (3+ emoji used as list markers)
+    emoji_bullets = re.findall(EMOJI_BULLET_PATTERN, copy)
+    if len(emoji_bullets) >= 3:
+        issues.append(
+            f"Emoji-bullet formatting ({len(emoji_bullets)} emoji list markers "
+            f"-- reads as AI-generated list)"
+        )
+
+    # Check 4: Mic-drop short sentences
+    for pattern in MIC_DROP_PATTERNS:
+        if re.search(pattern, copy, re.IGNORECASE | re.MULTILINE):
+            issues.append("Mic-drop short sentence (AI emphasis pattern)")
+            break
+
+    # Check 5: Arrow-list formatting (→ used as bullets, 3+)
+    arrow_bullets = re.findall(r"(?:^|\n)\s*→\s+", copy)
+    if len(arrow_bullets) >= 3:
+        issues.append(
+            f"Arrow-list formatting ({len(arrow_bullets)} arrows "
+            f"-- AI-generated list structure)"
+        )
+
+    # Check 6: Anonymous testimonial detection
+    # Quoted text at the start with no name/attribution after the quote
+    anon_testimonial = re.search(
+        r'^["\u201c].{20,}["\u201d]\s*$',
+        copy.split("\n")[0] if copy.strip() else "",
+        re.MULTILINE,
+    )
+    if anon_testimonial:
+        # Check if any name follows within the next 2 lines
+        lines = copy.strip().split("\n")
+        has_attribution = False
+        for line in lines[1:3]:
+            # Look for "— Name" or "- Name" patterns
+            if re.search(r"^[\s]*[—–\-]\s*[A-Z]", line):
+                has_attribution = True
+                break
+        if not has_attribution:
+            issues.append(
+                "Anonymous testimonial (quoted text with no attribution "
+                "-- reads as fabricated)"
+            )
+
+    # Check 7: Sentence structure uniformity
     sentences = _split_sentences(copy)
     if len(sentences) >= 3:
         lengths = [len(s.split()) for s in sentences]

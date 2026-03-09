@@ -494,6 +494,86 @@ class TestAIDetectionGate:
         assert result.status == GateStatus.REJECTED
         assert "cliche" in result.detail.lower()
 
+    def test_gen2_hustle_metaphors_rejected(self):
+        """Gen-2: hustle-culture metaphors -> REJECTED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy="Our system works while you sleep. Wake up to new leads every morning."
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.REJECTED
+        assert "gen2" in result.detail.lower()
+
+    def test_gen2_engagement_bait_rejected(self):
+        """Gen-2: engagement bait closers -> REJECTED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy="Great tips for your garden this spring. Tag a friend who needs this!"
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.REJECTED
+        assert "gen2" in result.detail.lower()
+
+    def test_gen2_emoji_bullet_formatting_rejected(self):
+        """Gen-2: emoji-bullet list formatting -> REJECTED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy=(
+                "Monday morning looks like this:\n"
+                "☕ Coffee's on\n"
+                "📊 Checking metrics\n"
+                "✍️ Writing content\n"
+                "🔍 Research time"
+            )
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.REJECTED
+        assert "emoji" in result.detail.lower()
+
+    def test_gen2_arrow_list_rejected(self):
+        """Gen-2: arrow-list formatting -> REJECTED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy=(
+                "Here's what we do:\n"
+                "→ We learn your business\n"
+                "→ We study your customers\n"
+                "→ We write in your voice\n"
+                "→ We post at the right times"
+            )
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.REJECTED
+        assert "arrow" in result.detail.lower()
+
+    def test_gen2_anonymous_testimonial_rejected(self):
+        """Gen-2: anonymous fabricated testimonial -> REJECTED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy=(
+                '"I was posting 3 times a week and getting maybe 2 likes."\n'
+                "\n"
+                "That's the shift that happens when you stop winging it."
+            )
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.REJECTED
+        assert "testimonial" in result.detail.lower() or "gen2" in result.detail.lower()
+
+    def test_clean_post_passes_gen2(self):
+        """Natural-sounding post with no AI patterns -> PASSED."""
+        db = MagicMock()
+        draft = _make_draft(
+            copy=(
+                "We took over social media for a bakery in Hamilton last month. "
+                "Their owner Sarah told us she used to spend Sunday nights "
+                "stressing about what to post. Now she spends that time "
+                "with her kids. That's the whole pitch, honestly."
+            )
+        )
+        result = run_ai_detection_gate(db, draft, client_id=1)
+        assert result.status == GateStatus.PASSED
+
     def test_uniform_sentence_length_rejected(self):
         """All sentences same length -> REJECTED for unnaturally uniform structure."""
         # Create text where all sentences have exactly the same word count

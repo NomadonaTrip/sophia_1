@@ -463,11 +463,41 @@ def _build_generation_rules(voice_profile: dict, client_config: dict) -> str:
     parts = ["GENERATION RULES:"]
     parts.append("- Write as the business owner, first person where natural")
     parts.append("- Never cite sources, studies, or articles")
-    parts.append("- Never use AI cliches: 'In today's fast-paced world', 'Let's dive in', "
-                 "'game-changer', 'unlock', 'leverage', 'elevate', 'revolutionize'")
     parts.append("- Avoid starting with questions unless that's the client's established pattern")
     parts.append("- All claims must be supportable by the research context provided")
     parts.append("- Each post must be self-contained and valuable on its own")
+
+    # AI cliche avoidance — comprehensive rules
+    parts.append("")
+    parts.append("AI CLICHE AVOIDANCE (critical — violations will be rejected):")
+    parts.append("- NEVER use these words/phrases: 'dive in', 'game-changer', 'unlock', "
+                 "'leverage', 'elevate', 'revolutionize', 'seamlessly', 'robust', "
+                 "'transformative', 'empowering', 'landscape', 'journey', 'delve', "
+                 "'fostering', 'In today's world'")
+    parts.append("- NEVER use hustle-culture metaphors: 'works while you sleep', "
+                 "'sitting on a goldmine', 'so you don't have to'")
+    parts.append("- NEVER use meta-AI defensiveness: 'not like a robot', "
+                 "'sounds like you not us', 'not cookie-cutter'")
+    parts.append("- NEVER use engagement bait closers: 'Tag someone who...', "
+                 "'Save this for later', 'Drop a [emoji] if...', "
+                 "'DM us [KEYWORD] to...'")
+    parts.append("- NEVER use emoji as bullet points (📍📍📍 or ☕📊✍️). "
+                 "Use plain text or checkmarks (✅) sparingly")
+    parts.append("- NEVER use arrow lists (→ → → →) as formatting")
+    parts.append("- NEVER fabricate testimonials. If using a quote, it must be from "
+                 "a real named person with their permission")
+    parts.append("- NEVER use mic-drop one-word sentences for emphasis: "
+                 "'Simple.', 'Always.', 'Period.', 'Not so much.'")
+    parts.append("- NEVER use unsourced precision stats: '5-10 hours a week', "
+                 "'3-4x the reach'. If you cite a number, it must come from "
+                 "the research context")
+    parts.append("- NEVER use coach-speak filler: 'That's the difference', "
+                 "'That's why we exist', 'showing up consistently', "
+                 "'tips that actually work', 'Your X will thank you'")
+    parts.append("- VARY your post structure. Not every post should follow "
+                 "Problem → Agitate → Solution → CTA. Mix formats: "
+                 "story-first, observation, hot take, behind-the-scenes slice, "
+                 "direct value drop")
 
     # Emoji preference
     base_voice = voice_profile.get("base_voice", {})
