@@ -63,10 +63,31 @@ def _client_to_dict(client: Client) -> dict:
     }
 
 
+def _ensure_voice_profile(db: Session, client: Client) -> None:
+    """Lazy-create a voice profile for clients that don't have one."""
+    if client.voice_profile is not None:
+        return
+    try:
+        from sophia.intelligence.voice import VoiceService
+
+        try:
+            profile_data = VoiceService.build_voice_profile(db, client.id)
+        except Exception:
+            profile_data = VoiceService.create_fallback_profile(
+                db, client.id, client.industry or "general"
+            )
+        VoiceService.save_voice_profile(db, client.id, profile_data)
+        db.refresh(client)
+    except Exception:
+        pass
+
+
 @client_router.get("/clients")
 def list_clients(db: Session = Depends(_get_db)) -> list[dict]:
     """Return all active clients shaped for the frontend ClientData interface."""
     clients = ClientService.list_clients(db)
+    for c in clients:
+        _ensure_voice_profile(db, c)
     return [_client_to_dict(c) for c in clients]
 
 
@@ -77,6 +98,7 @@ def get_client(client_id: int, db: Session = Depends(_get_db)) -> dict:
         client = ClientService.get_client(db, client_id)
     except ClientNotFoundError as exc:
         raise HTTPException(status_code=404, detail=exc.message)
+    _ensure_voice_profile(db, client)
     return _client_to_dict(client)
 
 
@@ -137,6 +159,14 @@ def add_voice_material(
 
     data = VoiceMaterialCreate(client_id=client_id, **body.model_dump())
     material = VoiceService.add_material(db, data)
+
+    # Rebuild voice profile from all materials
+    try:
+        profile_data = VoiceService.build_voice_profile(db, client_id)
+        VoiceService.save_voice_profile(db, client_id, profile_data)
+    except Exception:
+        pass  # Material is stored; profile rebuild is non-critical
+
     return {
         "id": material.id,
         "client_id": material.client_id,

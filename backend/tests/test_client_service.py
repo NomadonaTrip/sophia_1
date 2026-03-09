@@ -28,7 +28,7 @@ class TestCreateClient:
         assert client.archived_at is None
         assert client.last_activity_at is not None
         assert client.onboarding_state is not None
-        assert client.profile_completeness_pct == 15  # name + industry
+        assert client.profile_completeness_pct == 30  # name + industry + fallback voice
 
         # Verify audit log entry
         audit = (
@@ -90,46 +90,34 @@ class TestUpdateClient:
     def test_update_client_completeness(self, db_session, sample_client):
         """Profile completeness increases as fields are populated."""
         initial_pct = sample_client.profile_completeness_pct
-        assert initial_pct == 15  # name + industry
+        assert initial_pct == 30  # name + industry + fallback voice
 
         # Add business description (+10%)
         update1 = ClientUpdate(business_description="A great agency")
         c1 = ClientService.update_client(db_session, sample_client.id, update1)
-        assert c1.profile_completeness_pct == 25
+        assert c1.profile_completeness_pct == 40
 
         # Add content pillars (+15%)
         update2 = ClientUpdate(content_pillars=["marketing", "social"])
         c2 = ClientService.update_client(db_session, sample_client.id, update2)
-        assert c2.profile_completeness_pct == 40
+        assert c2.profile_completeness_pct == 55
 
         # Add target audience (+10%)
         update3 = ClientUpdate(target_audience={"demographics": "SMBs"})
         c3 = ClientService.update_client(db_session, sample_client.id, update3)
-        assert c3.profile_completeness_pct == 50
+        assert c3.profile_completeness_pct == 65
 
     def test_mvp_readiness(self, db_session, sample_client):
-        """MVP readiness requires voice profile + content pillar."""
+        """MVP readiness requires voice profile + content pillar.
+
+        Fallback voice profile is auto-created, so adding pillars is sufficient.
+        """
         assert sample_client.is_mvp_ready is False
 
-        # Add content pillars -- still not ready (no voice)
+        # Fallback voice profile already exists; adding content pillars makes MVP ready
         update = ClientUpdate(content_pillars=["tips"])
         c = ClientService.update_client(db_session, sample_client.id, update)
-        assert c.is_mvp_ready is False
-
-        # Add voice profile with confidence > 0
-        voice = VoiceProfile(
-            client_id=sample_client.id,
-            profile_data={"tone": "professional"},
-            overall_confidence_pct=30,
-            sample_count=3,
-        )
-        db_session.add(voice)
-        db_session.flush()
-
-        # Re-trigger completeness computation
-        update2 = ClientUpdate(business_description="Updated desc")
-        c2 = ClientService.update_client(db_session, sample_client.id, update2)
-        assert c2.is_mvp_ready is True
+        assert c.is_mvp_ready is True
 
 
 class TestListAndRoster:

@@ -105,6 +105,22 @@ class ClientService:
         db.commit()
         db.refresh(client)
 
+        # Create fallback voice profile so Voice % is never 0
+        try:
+            from sophia.intelligence.voice import VoiceService
+
+            fallback = VoiceService.create_fallback_profile(
+                db, client.id, data.industry
+            )
+            VoiceService.save_voice_profile(db, client.id, fallback)
+            db.refresh(client)
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "Failed to create fallback voice profile for client %d",
+                client.id,
+                exc_info=True,
+            )
+
         return client
 
     @staticmethod

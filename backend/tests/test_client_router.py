@@ -59,7 +59,7 @@ def test_list_clients_returns_real_data(client, db_session):
     assert item["postCount"] == 0
     assert item["engagementRate"] == 0.0
     assert item["trend"] == "flat"
-    assert item["voiceMatchPct"] == 0
+    assert item["voiceMatchPct"] == 10  # fallback profile: 0.15 * 0.7 = 0.105 → 10%
     assert item["sparkline"] == [0, 0, 0, 0, 0, 0]
 
 
@@ -129,13 +129,12 @@ def test_voice_match_pct_from_profile(client, db_session):
     c = ClientService.create_client(
         db_session, ClientCreate(name="Voice Client", industry="Music")
     )
-    vp = VoiceProfile(
-        client_id=c.id,
-        profile_data={"base_voice": {}},
-        overall_confidence_pct=78,
-        sample_count=5,
-    )
-    db_session.add(vp)
+    # Fallback VP already exists from create_client; update it
+    vp = db_session.query(VoiceProfile).filter(VoiceProfile.client_id == c.id).first()
+    assert vp is not None  # fallback was auto-created
+    vp.profile_data = {"base_voice": {}}
+    vp.overall_confidence_pct = 78
+    vp.sample_count = 5
     db_session.flush()
 
     resp = client.get("/api/clients")

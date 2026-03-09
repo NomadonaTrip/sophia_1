@@ -37,6 +37,12 @@ async def lifespan(app: FastAPI):
     - APScheduler: separate unencrypted SQLite job store (SQLCipher incompatible)
     - Telegram bot: webhook mode, registered as notification channel
     """
+    # Ensure all ORM tables exist (idempotent -- no-op for existing tables)
+    from sophia.db.engine import engine as _db_engine
+    from sophia.db.base import Base as _Base
+    import sophia.analytics.models  # noqa: F401 — register analytics tables
+    _Base.metadata.create_all(_db_engine)
+
     # Start APScheduler with separate unencrypted SQLite job store
     # Use same data directory as main DB, but unencrypted (APScheduler incompatible with SQLCipher)
     from sophia.config import get_settings
