@@ -104,12 +104,18 @@ async def process_file_upload(file) -> dict:
             "truncated": truncated,
         }
 
-    # Image
+    # Image — return absolute path so Claude can read it via its Read tool
     image_url = f"/uploads/{safe_name}"
+    abs_path = str(filepath.resolve())
     return {
         "filename": filename,
         "file_type": "image",
-        "parsed_text": f"[Shared image: {filename}]",
+        "parsed_text": (
+            f"[The operator shared an image: {filename}]\n"
+            f"Use your Read tool to view the file at: {abs_path}\n"
+            f"Then describe what you see and respond to the operator."
+        ),
+        "file_path": abs_path,
         "image_url": image_url,
         "size_bytes": len(contents),
     }

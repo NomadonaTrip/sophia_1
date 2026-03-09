@@ -9,6 +9,7 @@ Registered as a periodic APScheduler job (runs every 30 minutes).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
@@ -21,7 +22,7 @@ from sophia.content.models import ContentDraft
 logger = logging.getLogger(__name__)
 
 
-async def check_stale_content(
+def check_stale_content(
     db_session_factory: Callable[[], Session],
     stale_hours: int = 4,
 ) -> list[ContentDraft]:
@@ -50,14 +51,14 @@ async def check_stale_content(
                 updated = updated.replace(tzinfo=timezone.utc)
             hours_stale = (now - updated).total_seconds() / 3600
 
-            await event_bus.publish(
+            asyncio.run(event_bus.publish(
                 "content_stale",
                 {
                     "draft_id": draft.id,
                     "client_id": draft.client_id,
                     "hours_stale": round(hours_stale, 1),
                 },
-            )
+            ))
             logger.info(
                 "Stale content: draft %d (%.1f hours in review)",
                 draft.id, hours_stale,

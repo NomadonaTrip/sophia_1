@@ -581,6 +581,14 @@ async def _action_add_voice_material(
             content=content,
         )
         material = VoiceService.add_material(db, data)
+
+        # Rebuild voice profile from all materials
+        try:
+            profile_data = VoiceService.build_voice_profile(db, client_id)
+            VoiceService.save_voice_profile(db, client_id, profile_data)
+        except Exception:
+            pass
+
         yield {
             "type": "text",
             "content": (

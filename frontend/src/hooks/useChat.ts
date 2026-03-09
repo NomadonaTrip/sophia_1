@@ -174,21 +174,26 @@ export function useChat() {
           }),
         }
 
-        // 3. Build display content based on type
-        let messageText: string
+        // 3. Build display text (for UI) and claude text (sent to backend)
+        let displayText: string
+        let claudeText: string
         if (fileType === 'excel') {
-          messageText = `Here's a spreadsheet: **${uploadData.filename}**\n\n${uploadData.parsed_text}`
+          displayText = `Here's a spreadsheet: **${uploadData.filename}**\n\n${uploadData.parsed_text}`
+          claudeText = displayText
         } else if (fileType === 'text') {
-          messageText = `Here's a file: **${uploadData.filename}**\n\n${uploadData.parsed_text}`
+          displayText = `Here's a file: **${uploadData.filename}**\n\n${uploadData.parsed_text}`
+          claudeText = displayText
         } else {
-          messageText = `Shared an image: **${uploadData.filename}**`
+          // Images: show clean text in UI, send read instructions to Claude
+          displayText = `Shared an image: **${uploadData.filename}**`
+          claudeText = uploadData.parsed_text
         }
 
         // 4. Add optimistic user message with file chip
         const userMsg: ChatMessage = {
           id: `user-${Date.now()}`,
           role: 'user',
-          content: messageText,
+          content: displayText,
           timestamp: new Date(),
           fileAttachment,
         }
@@ -196,12 +201,12 @@ export function useChat() {
         setIsUploading(false)
         setIsThinking(true)
 
-        // 5. Send parsed content as normal chat message
+        // 5. Send parsed content (with vision instructions) as chat message
         const chatRes = await fetch('/api/orchestrator/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: messageText,
+            message: claudeText,
             client_context_id: clientContextId,
           }),
         })
